@@ -31,7 +31,7 @@ export default function AnalyticsDashboard() {
   const [analysis, setAnalysis] = useState<AnalysisResponse | null>(null)
   const [preview, setPreview] = useState<DataSample | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [token, setToken] = useState<string>(() => localStorage.getItem('API_TOKEN') || '')
+  const [token, setToken] = useState<string>(() => (localStorage.getItem('API_TOKEN') || '').trim())
 
   const API_URL = (import.meta.env.VITE_API_BASE_URL as string) || 'http://localhost:8002'
 
@@ -56,7 +56,7 @@ export default function AnalyticsDashboard() {
     try {
       const response = await fetch(`${API_URL}/preview/csv`, {
         method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        headers: token ? { Authorization: `Bearer ${token.trim()}` } : undefined,
         body: formData
       })
       if (!response.ok) throw new Error('Error al cargar preview')
@@ -78,7 +78,7 @@ export default function AnalyticsDashboard() {
     try {
       const response = await fetch(`${API_URL}/analyze/csv`, {
         method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        headers: token ? { Authorization: `Bearer ${token.trim()}` } : undefined,
         body: formData
       })
       if (!response.ok) {

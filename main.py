@@ -11,7 +11,9 @@ import pandas as pd
 import io
 import json
 
-load_dotenv()
+# Cargar .env desde la ruta del archivo, no del cwd
+dotenv_path = os.path.join(os.path.dirname(__file__), ".env")
+load_dotenv(dotenv_path=dotenv_path)
 
 app = FastAPI(
     title="AI Analytics Dashboard API",
@@ -34,12 +36,14 @@ app.add_middleware(
 # Autenticación Bearer (HTTPBearer con auto_error=False para personalizar respuestas)
 security = HTTPBearer(auto_error=False)
 EXPECTED_TOKEN = os.getenv("API_TOKEN")
+if EXPECTED_TOKEN:
+    EXPECTED_TOKEN = EXPECTED_TOKEN.strip()
 
 def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
     """Verifica el token Bearer. Errores en español exactos según requerimiento."""
     if credentials is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Falta el header Authorization: Bearer <token>")
-    token = credentials.credentials
+    token = credentials.credentials.strip()
     if EXPECTED_TOKEN is None or token != EXPECTED_TOKEN:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token inválido o no autorizado")
 
@@ -60,13 +64,19 @@ def check_rate_limit(client_ip: str):
     filtered.append(now)
     request_timestamps[client_ip] = filtered
 
+# Clase del modelo Pydantic: VisualizationSuggestion y AnalysisResponse
+class VisualizationSuggestion(BaseModel):
+    type: str
+    columns: List[str]
+    title: str
+
 class AnalysisResponse(BaseModel):
     summary: str
     insights: List[str]
     recommendations: List[str]
     key_metrics: Dict[str, Any]
     data_quality: Dict[str, Any]
-    visualizations_suggested: List[Dict[str, str]]
+    visualizations_suggested: List[VisualizationSuggestion]
     tokens_used: int
     timestamp: str
 
