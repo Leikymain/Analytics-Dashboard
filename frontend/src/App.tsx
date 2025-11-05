@@ -33,15 +33,12 @@ export default function AnalyticsDashboard() {
   const [error, setError] = useState<string | null>(null)
   const [token, setToken] = useState<string>(() => (localStorage.getItem('API_TOKEN') || '').trim())
 
-  // ✅ Normalización segura del backend URL
-  const rawApiUrl = (import.meta.env.VITE_API_BASE_URL as string)?.trim() || 'http://localhost:8002'
-  const API_URL = rawApiUrl.endsWith('/') ? rawApiUrl.slice(0, -1) : rawApiUrl
+  const API_URL = (import.meta.env.VITE_API_BASE_URL as string) || 'http://localhost:8002'
 
   useEffect(() => {
     localStorage.setItem('API_TOKEN', token)
   }, [token])
 
-  // ✅ Subida de archivo + vista previa
   const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
     if (!selectedFile) return
@@ -49,32 +46,27 @@ export default function AnalyticsDashboard() {
       setError('Solo se aceptan archivos CSV')
       return
     }
-
     setFile(selectedFile)
     setError(null)
     setAnalysis(null)
 
+    // Vista previa automática
     const formData = new FormData()
     formData.append('file', selectedFile)
-
     try {
       const response = await fetch(`${API_URL}/preview/csv`, {
         method: 'POST',
         headers: token ? { Authorization: `Bearer ${token.trim()}` } : undefined,
         body: formData
       })
-
       if (!response.ok) throw new Error('Error al cargar preview')
-
       const data: DataSample = await response.json()
       setPreview(data)
     } catch (err) {
       console.error('Error preview:', err)
-      setError('No se pudo obtener la vista previa del CSV.')
     }
   }
 
-  // ✅ Análisis del CSV
   const handleAnalyze = async () => {
     if (!file) return
     setLoading(true)
@@ -89,16 +81,13 @@ export default function AnalyticsDashboard() {
         headers: token ? { Authorization: `Bearer ${token.trim()}` } : undefined,
         body: formData
       })
-
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
         throw new Error(errorData.detail || 'Error en el análisis')
       }
-
       const data: AnalysisResponse = await response.json()
       setAnalysis(data)
     } catch (err: unknown) {
-      console.error('Error analyze:', err)
       const msg = err instanceof Error ? err.message : 'Error en el análisis'
       setError(msg)
     } finally {
@@ -151,8 +140,12 @@ export default function AnalyticsDashboard() {
             <div className="mt-6 p-4 bg-gray-50 rounded-lg">
               <h3 className="font-semibold text-gray-700 mb-2">Vista Previa</h3>
               <div className="text-sm text-gray-600 space-y-1">
-                <p><strong>Filas:</strong> {preview.total_rows}</p>
-                <p><strong>Columnas:</strong> {preview.columns.join(', ')}</p>
+                <p>
+                  <strong>Filas:</strong> {preview.total_rows}
+                </p>
+                <p>
+                  <strong>Columnas:</strong> {preview.columns.join(', ')}
+                </p>
               </div>
             </div>
           )}
@@ -261,7 +254,6 @@ export default function AnalyticsDashboard() {
                     {analysis.data_quality.calidad_general?.toUpperCase()}
                   </span>
                 </div>
-
                 {analysis.data_quality.issues && analysis.data_quality.issues.length > 0 && (
                   <div className="p-4 bg-orange-50 rounded-lg">
                     <p className="font-semibold text-orange-800 mb-2">Issues detectados:</p>
