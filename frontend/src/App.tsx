@@ -33,7 +33,9 @@ export default function AnalyticsDashboard() {
   const [error, setError] = useState<string | null>(null)
   const [token, setToken] = useState<string>(() => (localStorage.getItem('API_TOKEN') || '').trim())
 
-  const API_URL = (import.meta.env.VITE_API_BASE_URL as string) || 'http://localhost:8002'
+  // Normaliza la base URL: añade protocolo si falta y quita barra final
+  const rawBase = (import.meta.env.VITE_API_BASE_URL as string) || 'http://localhost:8002'
+  const API_URL = (rawBase.startsWith('http') ? rawBase : `https://${rawBase}`).replace(/\/+$/, '')
 
   useEffect(() => {
     localStorage.setItem('API_TOKEN', token)
