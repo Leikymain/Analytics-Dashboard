@@ -21,9 +21,13 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# App y CORS (top-level)
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*")
+allowed_origins = ["*"] if ALLOWED_ORIGINS == "*" else [o.strip() for o in ALLOWED_ORIGINS.split(",")]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -297,6 +301,8 @@ async def preview_csv(file: UploadFile = File(...), req: Request = None):
 def health_check():
     return {"status": "healthy", "timestamp": datetime.now().isoformat()}
 
+# Arranque local/contenerizado con puerto de entorno (Railway)
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8002)
+    port = int(os.getenv("PORT", 8002))
+    uvicorn.run(app, host="0.0.0.0", port=port)
