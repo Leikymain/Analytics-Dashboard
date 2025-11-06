@@ -291,16 +291,15 @@ async def preview_csv(file: UploadFile = File(...), req: Request = None):
     try:
         contents = await file.read()
         df = pd.read_csv(io.StringIO(contents.decode('utf-8')))
-        
+
         return DataSample(
             columns=list(df.columns),
             sample_rows=df.head(10).to_dict('records'),
             total_rows=len(df),
             data_types={col: str(dtype) for col, dtype in df.dtypes.items()}
         )
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error en preview")
 
 @app.get("/health")
 def health_check():
