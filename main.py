@@ -33,23 +33,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Variables de entorno requeridas para seguridad
-# - API_TOKEN: Token esperado para autenticación Bearer
-# - RATE_LIMIT: Límite de solicitudes por minuto (por IP) para endpoints protegidos
+# Variables de entorno requeridas para seguridad (validación interna, sin headers del cliente)
+import os
+API_TOKEN = os.getenv("API_TOKEN")
+if API_TOKEN:
+    API_TOKEN = API_TOKEN.strip()
+else:
+    print("⚠️ Advertencia: API_TOKEN no configurado en entorno.")
 
-# Autenticación Bearer (HTTPBearer con auto_error=False para personalizar respuestas)
-security = HTTPBearer(auto_error=False)
-EXPECTED_TOKEN = os.getenv("API_TOKEN")
-if EXPECTED_TOKEN:
-    EXPECTED_TOKEN = EXPECTED_TOKEN.strip()
-
-def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    """Verifica el token Bearer. Errores en español exactos según requerimiento."""
-    if credentials is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Falta el header Authorization: Bearer <token>")
-    token = credentials.credentials.strip()
-    if EXPECTED_TOKEN is None or token != EXPECTED_TOKEN:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token inválido o no autorizado")
+def verify_server_token():
+    if not API_TOKEN:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="No autorizado")
+    return True
 
 # Rate limiting por IP en memoria (ventana deslizante de 60s)
 # Nota: Esta implementación en memoria NO es segura para multi-proceso/cluster ni persistente.
@@ -118,7 +113,7 @@ def analyze_dataframe(df: pd.DataFrame) -> Dict[str, Any]:
 # Estado del token (no expone el valor)
 @app.get("/config/token-status")
 def token_status():
-    return {"token_configured": EXPECTED_TOKEN is not None}
+    return {"token_configured": API_TOKEN is not None}
 
 def get_ai_insights(df_analysis: Dict[str, Any], user_question: Optional[str] = None) -> tuple[Dict[str, Any], int]:
     """Obtiene insights de IA basados en los datos"""
@@ -212,8 +207,8 @@ Devuelve SOLO el JSON sin markdown ni explicaciones adicionales."""
     except Exception:
         raise HTTPException(status_code=500, detail="Error interno en el módulo de IA")
 
-@app.get("/", dependencies=[Depends(verify_token)])
-def root(req: Request):
+@app.get("/")
+def root(req: Request, ok: bool = Depends(verify_server_token)):
     # Rate limit por IP para endpoint protegido
     check_rate_limit(req.client.host)
     return {
@@ -224,15 +219,15 @@ def root(req: Request):
         "features": ["CSV upload", "Auto insights", "Data viz suggestions"]
     }
 
-@app.post("/analyze/csv", response_model=AnalysisResponse, dependencies=[Depends(verify_token)])
+@app.post("/analyze/csv", response_model=AnalysisResponse)
 async def analyze_csv(
     file: UploadFile = File(...),
     question: Optional[str] = None,
-    req: Request = None
+    req: Request = None,
+    ok: bool = Depends(verify_server_token)
 ):
     """
     Sube un CSV y obtén insights automáticos con IA.
-    
     - **file**: Archivo CSV
     - **question**: (Opcional) Pregunta específica sobre los datos
     """
@@ -276,8 +271,12 @@ async def analyze_csv(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error procesando CSV: {str(e)}")
 
-@app.post("/preview/csv", response_model=DataSample, dependencies=[Depends(verify_token)])
-async def preview_csv(file: UploadFile = File(...), req: Request = None):
+@app.post("/preview/csv", response_model=DataSample)
+async def preview_csv(
+    file: UploadFile = File(...),
+    req: Request = None,
+    ok: bool = Depends(verify_server_token)
+):
     """
     Vista previa de CSV sin análisis completo.
     Útil para verificar que el archivo es correcto antes de analizar.
@@ -291,15 +290,14 @@ async def preview_csv(file: UploadFile = File(...), req: Request = None):
     try:
         contents = await file.read()
         df = pd.read_csv(io.StringIO(contents.decode('utf-8')))
-
         return DataSample(
             columns=list(df.columns),
             sample_rows=df.head(10).to_dict('records'),
             total_rows=len(df),
             data_types={col: str(dtype) for col, dtype in df.dtypes.items()}
         )
-    except Exception:
-        raise HTTPException(status_code=500, detail="Error en preview")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 @app.get("/health")
 def health_check():
