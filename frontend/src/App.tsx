@@ -31,15 +31,28 @@ export default function AnalyticsDashboard() {
   const [analysis, setAnalysis] = useState<AnalysisResponse | null>(null)
   const [preview, setPreview] = useState<DataSample | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [token, setToken] = useState<string>(() => (localStorage.getItem('API_TOKEN') || '').trim())
+  const [tokenConfigured, setTokenConfigured] = useState<boolean>(true)
 
-  // Normaliza la base URL: añade protocolo si falta y quita barra final
-  const rawBase = (import.meta.env.VITE_API_BASE_URL as string) || 'http://localhost:8002'
+  // Base URL normalizada (sin exponer secretos)
+  const rawBase = (import.meta.env.VITE_API_BASE_URL as string) || (import.meta.env.DEV ? 'http://localhost:8002' : '')
   const API_URL = (rawBase.startsWith('http') ? rawBase : `https://${rawBase}`).replace(/\/+$/, '')
 
   useEffect(() => {
-    localStorage.setItem('API_TOKEN', token)
-  }, [token])
+    // Consultar estado del token sin exponer su valor
+    const checkToken = async () => {
+      try {
+        const res = await fetch(`${API_URL}/config/token-status`)
+        if (res.ok) {
+          const data = await res.json()
+          setTokenConfigured(Boolean(data?.token_configured))
+        }
+      } catch {
+        // En caso de error de red, no interrumpir la UI
+        setTokenConfigured(true)
+      }
+    }
+    checkToken()
+  }, [API_URL])
 
   const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
@@ -52,20 +65,24 @@ export default function AnalyticsDashboard() {
     setError(null)
     setAnalysis(null)
 
-    // Vista previa automática
     const formData = new FormData()
     formData.append('file', selectedFile)
     try {
-      const response = await fetch(`${API_URL}/preview/csv`, {
+      const response = await fetch(`${API_URL}/proxy/preview`, {
         method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token.trim()}` } : undefined,
         body: formData
       })
-      if (!response.ok) throw new Error('Error al cargar preview')
+      if (!response.ok) {
+        const msg =
+          response.status === 429 ? 'Demasiadas peticiones, intenta más tarde' :
+          'Error al cargar preview'
+        throw new Error(msg)
+      }
       const data: DataSample = await response.json()
       setPreview(data)
     } catch (err) {
-      console.error('Error preview:', err)
+      const msg = err instanceof Error ? err.message : 'Error al cargar preview'
+      setError(msg)
     }
   }
 
@@ -78,14 +95,15 @@ export default function AnalyticsDashboard() {
     formData.append('file', file)
 
     try {
-      const response = await fetch(`${API_URL}/analyze/csv`, {
+      const response = await fetch(`${API_URL}/proxy/analyze`, {
         method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token.trim()}` } : undefined,
         body: formData
       })
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.detail || 'Error en el análisis')
+        const msg =
+          response.status === 429 ? 'Demasiadas peticiones, intenta más tarde' :
+          'Error en el análisis'
+        throw new Error(msg)
       }
       const data: AnalysisResponse = await response.json()
       setAnalysis(data)
@@ -109,27 +127,24 @@ export default function AnalyticsDashboard() {
           <p className="text-gray-600 text-lg">Sube tu CSV y obtén insights automáticos con Inteligencia Artificial</p>
         </div>
 
-        {/* Token input */}
-        <div className="bg-white rounded-2xl shadow p-4 mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Token de API (Bearer)</label>
-          <input
-            type="password"
-            value={token}
-            onChange={(e) => setToken(e.target.value)}
-            placeholder="Pega tu API_TOKEN aquí"
-            className="w-full border rounded-md px-3 py-2"
-          />
-          <p className="text-xs text-gray-500 mt-2">Se guarda localmente en tu navegador para las peticiones protegidas.</p>
-        </div>
+        {/* Aviso no intrusivo si falta token en el backend */}
+        {!tokenConfigured && (
+          <div className="bg-yellow-50 border-l-4 border-yellow-500 p-3 mb-6 rounded-r-lg">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-yellow-600" />
+              <p className="text-yellow-700 text-sm">⚠️ Token no configurado en entorno</p>
+            </div>
+          </div>
+        )}
 
         {/* Upload Section */}
         <div className="bg-white rounded-2xl shadow-xl p-8 mb-8">
           <div className="border-3 border-dashed border-gray-300 rounded-xl p-12 text-center hover:border-blue-400 transition-colors">
             <Upload className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <input type="file" accept=".csv" onChange={handleFileChange} className="hidden" id="file-upload" />
             <label htmlFor="file-upload" className="cursor-pointer text-blue-600 hover:text-blue-700 font-semibold text-lg">
               Haz clic para subir archivo CSV
             </label>
+            <input type="file" accept=".csv" onChange={handleFileChange} className="hidden" id="file-upload" />
             {file && (
               <div className="mt-4 flex items-center justify-center gap-2 text-green-600">
                 <CheckCircle className="w-5 h-5" />
@@ -142,12 +157,8 @@ export default function AnalyticsDashboard() {
             <div className="mt-6 p-4 bg-gray-50 rounded-lg">
               <h3 className="font-semibold text-gray-700 mb-2">Vista Previa</h3>
               <div className="text-sm text-gray-600 space-y-1">
-                <p>
-                  <strong>Filas:</strong> {preview.total_rows}
-                </p>
-                <p>
-                  <strong>Columnas:</strong> {preview.columns.join(', ')}
-                </p>
+                <p><strong>Filas:</strong> {preview.total_rows}</p>
+                <p><strong>Columnas:</strong> {preview.columns.join(', ')}</p>
               </div>
             </div>
           )}

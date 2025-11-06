@@ -115,6 +115,11 @@ def analyze_dataframe(df: pd.DataFrame) -> Dict[str, Any]:
     
     return analysis
 
+# Estado del token (no expone el valor)
+@app.get("/config/token-status")
+def token_status():
+    return {"token_configured": EXPECTED_TOKEN is not None}
+
 def get_ai_insights(df_analysis: Dict[str, Any], user_question: Optional[str] = None) -> tuple[Dict[str, Any], int]:
     """Obtiene insights de IA basados en los datos"""
     
@@ -204,8 +209,8 @@ Devuelve SOLO el JSON sin markdown ni explicaciones adicionales."""
             "data_quality": {"calidad_general": "desconocida"},
             "visualizations_suggested": []
         }, 0
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error en IA: {str(e)}")
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error interno en el módulo de IA")
 
 @app.get("/", dependencies=[Depends(verify_token)])
 def root(req: Request):
