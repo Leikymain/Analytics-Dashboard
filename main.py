@@ -10,6 +10,8 @@ from dotenv import load_dotenv
 import pandas as pd
 import io
 import json
+from auth_middleware import require_auth
+from fastapi import Depends
 
 # Cargar .env desde la ruta del archivo, no del cwd
 dotenv_path = os.path.join(os.path.dirname(__file__), ".env")
@@ -224,7 +226,8 @@ async def analyze_csv(
     file: UploadFile = File(...),
     question: Optional[str] = None,
     req: Request = None,
-    ok: bool = Depends(verify_server_token)
+    ok: bool = Depends(verify_server_token),
+    token: str = Depends(require_auth)
 ):
     """
     Sube un CSV y obtén insights automáticos con IA.
@@ -275,7 +278,8 @@ async def analyze_csv(
 async def preview_csv(
     file: UploadFile = File(...),
     req: Request = None,
-    ok: bool = Depends(verify_server_token)
+    ok: bool = Depends(verify_server_token),
+    token: str = Depends(require_auth)
 ):
     """
     Vista previa de CSV sin análisis completo.
