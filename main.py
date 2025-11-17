@@ -97,35 +97,35 @@ def get_ai_insights(df_analysis: Dict[str, Any], user_question: Optional[str] = 
     
     client = anthropic.Anthropic(api_key=api_key)
     context = f"""
-Análisis de datos:
-- Total de filas: {df_analysis['shape']['rows']}
-- Total de columnas: {df_analysis['shape']['columns']}
-- Columnas: {', '.join(df_analysis['columns'])}
-- Valores faltantes: {df_analysis['missing_values']}
+    Análisis de datos:
+    - Total de filas: {df_analysis['shape']['rows']}
+    - Total de columnas: {df_analysis['shape']['columns']}
+    - Columnas: {', '.join(df_analysis['columns'])}
+    - Valores faltantes: {df_analysis['missing_values']}
 
-Resumen estadístico de columnas numéricas:
-{json.dumps(df_analysis['numeric_summary'], indent=2)}
+    Resumen estadístico de columnas numéricas:
+    {json.dumps(df_analysis['numeric_summary'], indent=2)}
 
-Muestra de datos (primeras 10 filas):
-{json.dumps(df_analysis['sample_data'][:5], indent=2)}
-"""
+    Muestra de datos (primeras 10 filas):
+    {json.dumps(df_analysis['sample_data'][:5], indent=2)}
+    """
     prompt = f"""Eres un analista de datos experto. Analiza estos datos y proporciona:
 
-{context}
+    {context}
 
-Devuelve un JSON con esta estructura:
-{{
-  "summary": "Resumen ejecutivo en 2-3 frases",
-  "insights": ["Insight 1", "Insight 2"],
-  "recommendations": ["Recomendación 1", "Recomendación 2"],
-  "key_metrics": {{}},
-  "data_quality": {{}},
-  "visualizations_suggested": []
-}}
+    Devuelve un JSON con esta estructura:
+    {{
+    "summary": "Resumen ejecutivo en 2-3 frases",
+    "insights": ["Insight 1", "Insight 2"],
+    "recommendations": ["Recomendación 1", "Recomendación 2"],
+    "key_metrics": {{}},
+    "data_quality": {{}},
+    "visualizations_suggested": []
+    }}
 
-{f"Pregunta específica del usuario: {user_question}" if user_question else ""}
+    {f"Pregunta específica del usuario: {user_question}" if user_question else ""}
 
-Devuelve SOLO el JSON sin markdown ni explicaciones adicionales."""
+    Devuelve SOLO el JSON sin markdown ni explicaciones adicionales."""
 
     try:
         response = client.messages.create(
