@@ -207,18 +207,39 @@ async def preview_csv(file: UploadFile = File(...), req: Request = None, token: 
 
 @app.post("/analyze/csv", response_model=AnalysisResponse)
 async def analyze_csv(file: UploadFile = File(...), question: Optional[str] = None, req: Request = None, token: str = Depends(require_auth)):
-    check_rate_limit(req.client.host)
-    if not file.filename.endswith('.csv'):
-        raise HTTPException(status_code=400, detail="Solo archivos CSV")
     try:
+        # Rate limiting
+        check_rate_limit(req.client.host)
+
+        # Validar extensión
+        if not file.filename.endswith('.csv'):
+            raise HTTPException(status_code=400, detail="Solo archivos CSV")
+
+        # Leer CSV
         contents = await file.read()
         df = pd.read_csv(io.StringIO(contents.decode('utf-8')))
+
         if df.empty:
             raise HTTPException(status_code=400, detail="CSV vacío")
         if len(df) > 10000:
             df = df.head(10000)
+
+        # Analizar DataFrame
         df_analysis = analyze_dataframe(df)
-        ai_insights, tokens_used = get_ai_insights(df_analysis, question)
+
+        # Obtener insights de IA
+        try:
+            ai_insights, tokens_used = get_ai_insights(df_analysis, question)
+        except HTTPException as he:
+            print("HTTPException en get_ai_insights:", he.detail)
+            raise he
+        except Exception as e:
+            print("Excepción inesperada en get_ai_insights:", e)
+            import traceback
+            traceback.print_exc()
+            raise HTTPException(status_code=500, detail=f"Error procesando IA: {e}")
+
+        # Respuesta final
         return AnalysisResponse(
             summary=ai_insights.get("summary", ""),
             insights=ai_insights.get("insights", []),
@@ -229,10 +250,18 @@ async def analyze_csv(file: UploadFile = File(...), question: Optional[str] = No
             tokens_used=tokens_used,
             timestamp=datetime.now().isoformat()
         )
+
     except pd.errors.EmptyDataError:
         raise HTTPException(status_code=400, detail="CSV vacío o mal formado")
+    except HTTPException:
+        # Ya fue levantado, re-lanzamos
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error procesando CSV: {str(e)}")
+        print("ERROR general en /analyze/csv:", e)
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error procesando CSV: {e}")
+
 
 @app.get("/health")
 def health_check():
