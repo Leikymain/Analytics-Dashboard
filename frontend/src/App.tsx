@@ -20,10 +20,7 @@ export default function AnalyticsDashboard() {
 
     useEffect(() => {
         const stored = localStorage.getItem('demo_token')
-        if (stored && stored.trim()) {
-            setDemoToken(stored)
-            setHasDemoToken(true)
-        }
+        if (stored && stored.trim()) { setDemoToken(stored); setHasDemoToken(true) }
     }, [])
 
     const handleTokenSubmit = (token: string) => {
@@ -36,9 +33,7 @@ export default function AnalyticsDashboard() {
     const getAuthHeader = (): HeadersInit => demoToken ? { Authorization: `Bearer ${demoToken}` } : {}
 
     const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
-        setAnalysis(null)
-        setPreview(null)
-        setError(null)
+        setAnalysis(null); setPreview(null); setError(null)
         if (!hasDemoToken) { setError('Debes introducir un token de acceso primero'); return }
 
         const selectedFile = e.target.files?.[0]
@@ -62,9 +57,7 @@ export default function AnalyticsDashboard() {
 
     const handleAnalyze = async () => {
         if (!file || !hasDemoToken) return
-        setLoadingAnalysis(true)
-        setError(null)
-        setAnalysis(null)
+        setLoadingAnalysis(true); setError(null); setAnalysis(null)
 
         const formData = new FormData()
         formData.append('file', file)
