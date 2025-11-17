@@ -90,35 +90,28 @@ def analyze_dataframe(df: pd.DataFrame) -> Dict[str, Any]:
         }
     return analysis
 
-def get_ai_insights(df_analysis: Dict[str, Any], user_question: Optional[str] = None) -> tuple[Dict[str, Any], int]:
-    import traceback
+import re
 
+def get_ai_insights(df_analysis: Dict[str, Any], user_question: Optional[str] = None) -> tuple[Dict[str, Any], int]:
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
         raise HTTPException(status_code=500, detail="API key no configurada")
+    
+    client = anthropic.Anthropic(api_key=api_key)
+    context = f"""
+    Análisis de datos:
+    - Total de filas: {df_analysis['shape']['rows']}
+    - Total de columnas: {df_analysis['shape']['columns']}
+    - Columnas: {', '.join(df_analysis['columns'])}
+    - Valores faltantes: {df_analysis['missing_values']}
 
-    try:
-        client = anthropic.Anthropic(api_key=api_key)
+    Resumen estadístico de columnas numéricas:
+    {json.dumps(df_analysis['numeric_summary'], indent=2)}
 
-        context = f"""
-Análisis de datos:
-- Total de filas: {df_analysis['shape']['rows']}
-- Total de columnas: {df_analysis['shape']['columns']}
-- Columnas: {', '.join(df_analysis['columns'])}
-- Valores faltantes: {df_analysis['missing_values']}
-
-Resumen estadístico de columnas numéricas:
-{json.dumps(df_analysis['numeric_summary'], indent=2)}
-
-Muestra de datos (primeras 10 filas):
-{json.dumps(df_analysis['sample_data'][:5], indent=2)}
-"""
-
-        prompt = f"""Eres un analista de datos experto. Analiza estos datos y proporciona:
-
-{context}
-
-Devuelve un JSON con esta estructura:
+    Muestra de datos (primeras 10 filas):
+    {json.dumps(df_analysis['sample_data'][:5], indent=2)}
+    """
+    prompt = f"""Eres un analista de datos experto. Analiza estos datos y devuelve SOLO un JSON válido con esta estructura:
 {{
   "summary": "Resumen ejecutivo en 2-3 frases",
   "insights": ["Insight 1", "Insight 2"],
@@ -127,12 +120,10 @@ Devuelve un JSON con esta estructura:
   "data_quality": {{}},
   "visualizations_suggested": []
 }}
-
 {f"Pregunta específica del usuario: {user_question}" if user_question else ""}
-
-Devuelve SOLO el JSON sin markdown ni explicaciones adicionales.
 """
 
+    try:
         response = client.messages.create(
             model="claude-haiku-4-5-20251001",
             max_tokens=2048,
@@ -140,35 +131,24 @@ Devuelve SOLO el JSON sin markdown ni explicaciones adicionales.
             messages=[{"role": "user", "content": prompt}]
         )
 
-        # Debug: imprimir objeto completo para ver estructura
-        print("DEBUG: Claude response:", response)
-
-        if not hasattr(response, "content") or len(response.content) == 0 or not hasattr(response.content[0], "text"):
-            raise HTTPException(status_code=500, detail="Respuesta de Claude vacía o mal formada")
-
+        # Obtener texto de la respuesta
         response_text = response.content[0].text.strip()
+        print("DEBUG: Claude response text:", response_text[:1000])  # muestra los primeros 1000 caracteres
 
-        # Limpiar markdown si existe
-        if "```json" in response_text:
-            response_text = response_text.split("```json")[1].split("```")[0]
-        elif "```" in response_text:
-            response_text = response_text.split("```")[1].split("```")[0]
+        # Extraer el JSON usando regex
+        match = re.search(r"\{.*\}", response_text, re.DOTALL)
+        if not match:
+            raise HTTPException(status_code=500, detail="No se pudo extraer JSON de la respuesta de IA")
 
-        # Parsear JSON
-        insights_data = json.loads(response_text.strip())
+        json_text = match.group(0)
+        insights_data = json.loads(json_text)
 
-        tokens_used = getattr(response, "usage", None)
-        if tokens_used:
-            tokens_used = tokens_used.input_tokens + tokens_used.output_tokens
-        else:
-            tokens_used = 0
-
+        tokens_used = response.usage.input_tokens + response.usage.output_tokens
         return insights_data, tokens_used
 
-    except json.JSONDecodeError as jde:
-        print("ERROR JSONDecodeError:", jde)
+    except json.JSONDecodeError as e:
+        print("ERROR JSONDecodeError:", e)
         print("Response text was:", response_text)
-        traceback.print_exc()
         return {
             "summary": "Error al parsear respuesta de IA",
             "insights": ["No se pudieron generar insights automáticos"],
@@ -177,8 +157,9 @@ Devuelve SOLO el JSON sin markdown ni explicaciones adicionales.
             "data_quality": {"calidad_general": "desconocida"},
             "visualizations_suggested": []
         }, 0
+
     except Exception as e:
-        print("ERROR en get_ai_insights:", e)
+        import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error interno en el módulo de IA: {e}")
 
@@ -206,16 +187,18 @@ async def preview_csv(file: UploadFile = File(...), req: Request = None, token: 
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 @app.post("/analyze/csv", response_model=AnalysisResponse)
-async def analyze_csv(file: UploadFile = File(...), question: Optional[str] = None, req: Request = None, token: str = Depends(require_auth)):
+async def analyze_csv(
+    file: UploadFile = File(...),
+    question: Optional[str] = None,
+    req: Request = None,
+    token: str = Depends(require_auth)
+):
+    check_rate_limit(req.client.host)
+
+    if not file.filename.endswith('.csv'):
+        raise HTTPException(status_code=400, detail="Solo archivos CSV")
+
     try:
-        # Rate limiting
-        check_rate_limit(req.client.host)
-
-        # Validar extensión
-        if not file.filename.endswith('.csv'):
-            raise HTTPException(status_code=400, detail="Solo archivos CSV")
-
-        # Leer CSV
         contents = await file.read()
         df = pd.read_csv(io.StringIO(contents.decode('utf-8')))
 
@@ -224,22 +207,20 @@ async def analyze_csv(file: UploadFile = File(...), question: Optional[str] = No
         if len(df) > 10000:
             df = df.head(10000)
 
-        # Analizar DataFrame
         df_analysis = analyze_dataframe(df)
 
-        # Obtener insights de IA
+        # Llamada robusta a Claude con manejo de errores y logs
         try:
             ai_insights, tokens_used = get_ai_insights(df_analysis, question)
-        except HTTPException as he:
-            print("HTTPException en get_ai_insights:", he.detail)
-            raise he
         except Exception as e:
-            print("Excepción inesperada en get_ai_insights:", e)
             import traceback
             traceback.print_exc()
-            raise HTTPException(status_code=500, detail=f"Error procesando IA: {e}")
+            raise HTTPException(status_code=500, detail=f"Error al obtener insights de IA: {e}")
 
-        # Respuesta final
+        # Validar que la respuesta tenga la estructura esperada
+        if not isinstance(ai_insights, dict):
+            raise HTTPException(status_code=500, detail="La respuesta de IA no es un JSON válido")
+
         return AnalysisResponse(
             summary=ai_insights.get("summary", ""),
             insights=ai_insights.get("insights", []),
@@ -253,14 +234,10 @@ async def analyze_csv(file: UploadFile = File(...), question: Optional[str] = No
 
     except pd.errors.EmptyDataError:
         raise HTTPException(status_code=400, detail="CSV vacío o mal formado")
-    except HTTPException:
-        # Ya fue levantado, re-lanzamos
-        raise
     except Exception as e:
-        print("ERROR general en /analyze/csv:", e)
         import traceback
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Error procesando CSV: {e}")
+        raise HTTPException(status_code=500, detail=f"Error procesando CSV: {str(e)}")
 
 
 @app.get("/health")
