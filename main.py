@@ -20,7 +20,7 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Configurar CORS
+# Configurar CORS según tu frontend
 allowed_origins = [origin.strip() for origin in os.getenv("ALLOWED_ORIGINS", "").split(",") if origin.strip()]
 if allowed_origins:
     app.add_middleware(
@@ -31,7 +31,7 @@ if allowed_origins:
         allow_headers=["*"],
     )
 
-# Rate limiting
+# Rate limiting por IP
 RATE_LIMIT = int(os.getenv("RATE_LIMIT", 30))
 RATE_WINDOW = 60
 request_timestamps: dict[str, list[float]] = {}
@@ -71,7 +71,7 @@ class DataSample(BaseModel):
     total_rows: int
     data_types: Dict[str, str]
 
-# Analizar DataFrame
+# Función para análisis básico del dataframe
 def analyze_dataframe(df: pd.DataFrame) -> Dict[str, Any]:
     analysis = {
         "shape": {"rows": len(df), "columns": len(df.columns)},
@@ -92,19 +92,28 @@ def analyze_dataframe(df: pd.DataFrame) -> Dict[str, Any]:
         }
     return analysis
 
-# Obtener insights de IA
+# Función para obtener insights de IA
 def get_ai_insights(df_analysis: Dict[str, Any], user_question: Optional[str] = None) -> tuple[Dict[str, Any], int]:
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
         raise HTTPException(status_code=500, detail="API key no configurada")
 
     client = anthropic.Anthropic(api_key=api_key)
+    context = f"""
+Análisis de datos:
+- Total de filas: {df_analysis['shape']['rows']}
+- Total de columnas: {df_analysis['shape']['columns']}
+- Columnas: {', '.join(df_analysis['columns'])}
+- Valores faltantes: {df_analysis['missing_values']}
 
-    # Convertir análisis a JSON limpio
-    clean_context = json.dumps(df_analysis, ensure_ascii=False, separators=(",", ":"))
+Resumen estadístico de columnas numéricas:
+{json.dumps(df_analysis['numeric_summary'], indent=2)}
 
-    prompt = f"""
-Eres un analista de datos experto. Analiza estos datos y devuelve SOLO un JSON válido con esta estructura:
+Muestra de datos (primeras 10 filas):
+{json.dumps(df_analysis['sample_data'][:5], indent=2)}
+"""
+
+    prompt = f"""Eres un analista de datos experto. Analiza estos datos y devuelve SOLO un JSON válido con esta estructura:
 {{
   "summary": "Resumen ejecutivo en 2-3 frases",
   "insights": ["Insight 1", "Insight 2"],
@@ -113,8 +122,6 @@ Eres un analista de datos experto. Analiza estos datos y devuelve SOLO un JSON v
   "data_quality": {{}},
   "visualizations_suggested": []
 }}
-Datos a analizar:
-{clean_context}
 {f"Pregunta específica del usuario: {user_question}" if user_question else ""}
 """
 
@@ -127,14 +134,34 @@ Datos a analizar:
         )
 
         response_text = response.content[0].text.strip()
-        print("DEBUG: Claude response text:", response_text[:1000])  # log parcial
+        print("DEBUG: Claude response text:", response_text[:1000])
 
         # Extraer JSON con regex
         match = re.search(r"\{.*\}", response_text, re.DOTALL)
         if not match:
             raise HTTPException(status_code=500, detail="No se pudo extraer JSON de la respuesta de IA")
+        json_text = match.group(0)
+        insights_data = json.loads(json_text)
 
-        insights_data = json.loads(match.group(0))
+        # Convertir visualizaciones en objetos VisualizationSuggestion
+        visualizations = insights_data.get("visualizations_suggested", [])
+        visualizations_sanitized = []
+        for v in visualizations:
+            if ":" in v:
+                type_, title = v.split(":", 1)
+                visualizations_sanitized.append({
+                    "type": type_.strip(),
+                    "columns": [],
+                    "title": title.strip()
+                })
+            else:
+                visualizations_sanitized.append({
+                    "type": "general",
+                    "columns": [],
+                    "title": v
+                })
+        insights_data["visualizations_suggested"] = visualizations_sanitized
+
         tokens_used = response.usage.input_tokens + response.usage.output_tokens
         return insights_data, tokens_used
 
@@ -149,7 +176,6 @@ Datos a analizar:
             "data_quality": {"calidad_general": "desconocida"},
             "visualizations_suggested": []
         }, 0
-
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -179,29 +205,20 @@ async def preview_csv(file: UploadFile = File(...), req: Request = None, token: 
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 @app.post("/analyze/csv", response_model=AnalysisResponse)
-async def analyze_csv(
-    file: UploadFile = File(...),
-    question: Optional[str] = None,
-    req: Request = None,
-    token: str = Depends(require_auth)
-):
+async def analyze_csv(file: UploadFile = File(...), question: Optional[str] = None, req: Request = None, token: str = Depends(require_auth)):
     check_rate_limit(req.client.host)
-
     if not file.filename.endswith('.csv'):
         raise HTTPException(status_code=400, detail="Solo archivos CSV")
 
     try:
         contents = await file.read()
         df = pd.read_csv(io.StringIO(contents.decode('utf-8')))
-
         if df.empty:
             raise HTTPException(status_code=400, detail="CSV vacío")
         if len(df) > 10000:
             df = df.head(10000)
 
         df_analysis = analyze_dataframe(df)
-
-        # Llamada robusta a Claude
         ai_insights, tokens_used = get_ai_insights(df_analysis, question)
 
         if not isinstance(ai_insights, dict):
