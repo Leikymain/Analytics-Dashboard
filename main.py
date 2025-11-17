@@ -91,58 +91,84 @@ def analyze_dataframe(df: pd.DataFrame) -> Dict[str, Any]:
     return analysis
 
 def get_ai_insights(df_analysis: Dict[str, Any], user_question: Optional[str] = None) -> tuple[Dict[str, Any], int]:
+    import traceback
+
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
         raise HTTPException(status_code=500, detail="API key no configurada")
-    
-    client = anthropic.Anthropic(api_key=api_key)
-    context = f"""
-    Análisis de datos:
-    - Total de filas: {df_analysis['shape']['rows']}
-    - Total de columnas: {df_analysis['shape']['columns']}
-    - Columnas: {', '.join(df_analysis['columns'])}
-    - Valores faltantes: {df_analysis['missing_values']}
-
-    Resumen estadístico de columnas numéricas:
-    {json.dumps(df_analysis['numeric_summary'], indent=2)}
-
-    Muestra de datos (primeras 10 filas):
-    {json.dumps(df_analysis['sample_data'][:5], indent=2)}
-    """
-    prompt = f"""Eres un analista de datos experto. Analiza estos datos y proporciona:
-
-    {context}
-
-    Devuelve un JSON con esta estructura:
-    {{
-    "summary": "Resumen ejecutivo en 2-3 frases",
-    "insights": ["Insight 1", "Insight 2"],
-    "recommendations": ["Recomendación 1", "Recomendación 2"],
-    "key_metrics": {{}},
-    "data_quality": {{}},
-    "visualizations_suggested": []
-    }}
-
-    {f"Pregunta específica del usuario: {user_question}" if user_question else ""}
-
-    Devuelve SOLO el JSON sin markdown ni explicaciones adicionales."""
 
     try:
+        client = anthropic.Anthropic(api_key=api_key)
+
+        context = f"""
+Análisis de datos:
+- Total de filas: {df_analysis['shape']['rows']}
+- Total de columnas: {df_analysis['shape']['columns']}
+- Columnas: {', '.join(df_analysis['columns'])}
+- Valores faltantes: {df_analysis['missing_values']}
+
+Resumen estadístico de columnas numéricas:
+{json.dumps(df_analysis['numeric_summary'], indent=2)}
+
+Muestra de datos (primeras 10 filas):
+{json.dumps(df_analysis['sample_data'][:5], indent=2)}
+"""
+
+        prompt = f"""Eres un analista de datos experto. Analiza estos datos y proporciona:
+
+{context}
+
+Devuelve un JSON con esta estructura:
+{{
+  "summary": "Resumen ejecutivo en 2-3 frases",
+  "insights": ["Insight 1", "Insight 2"],
+  "recommendations": ["Recomendación 1", "Recomendación 2"],
+  "key_metrics": {{}},
+  "data_quality": {{}},
+  "visualizations_suggested": []
+}}
+
+{f"Pregunta específica del usuario: {user_question}" if user_question else ""}
+
+Devuelve SOLO el JSON sin markdown ni explicaciones adicionales.
+"""
+
         response = client.messages.create(
             model="claude-haiku-4-5-20251001",
             max_tokens=2048,
             temperature=0.3,
             messages=[{"role": "user", "content": prompt}]
         )
+
+        # Debug: imprimir objeto completo para ver estructura
+        print("DEBUG: Claude response:", response)
+
+        if not hasattr(response, "content") or len(response.content) == 0 or not hasattr(response.content[0], "text"):
+            raise HTTPException(status_code=500, detail="Respuesta de Claude vacía o mal formada")
+
         response_text = response.content[0].text.strip()
+
+        # Limpiar markdown si existe
         if "```json" in response_text:
             response_text = response_text.split("```json")[1].split("```")[0]
         elif "```" in response_text:
             response_text = response_text.split("```")[1].split("```")[0]
+
+        # Parsear JSON
         insights_data = json.loads(response_text.strip())
-        tokens_used = response.usage.input_tokens + response.usage.output_tokens
+
+        tokens_used = getattr(response, "usage", None)
+        if tokens_used:
+            tokens_used = tokens_used.input_tokens + tokens_used.output_tokens
+        else:
+            tokens_used = 0
+
         return insights_data, tokens_used
-    except json.JSONDecodeError:
+
+    except json.JSONDecodeError as jde:
+        print("ERROR JSONDecodeError:", jde)
+        print("Response text was:", response_text)
+        traceback.print_exc()
         return {
             "summary": "Error al parsear respuesta de IA",
             "insights": ["No se pudieron generar insights automáticos"],
@@ -151,8 +177,10 @@ def get_ai_insights(df_analysis: Dict[str, Any], user_question: Optional[str] = 
             "data_quality": {"calidad_general": "desconocida"},
             "visualizations_suggested": []
         }, 0
-    except Exception:
-        raise HTTPException(status_code=500, detail="Error interno en el módulo de IA")
+    except Exception as e:
+        print("ERROR en get_ai_insights:", e)
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error interno en el módulo de IA: {e}")
 
 # Endpoints
 @app.get("/")
