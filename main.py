@@ -13,9 +13,7 @@ import json
 from auth_middleware import require_auth
 from fastapi import Depends
 
-# Cargar .env desde la ruta del archivo, no del cwd
-dotenv_path = os.path.join(os.path.dirname(__file__), ".env")
-load_dotenv(dotenv_path=dotenv_path)
+load_dotenv()
 
 app = FastAPI(
     title="AI Analytics Dashboard API",
@@ -23,20 +21,15 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# App y CORS (top-level)
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*")
-allowed_origins = ["*"] if ALLOWED_ORIGINS == "*" else [o.strip() for o in ALLOWED_ORIGINS.split(",")]
+allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "")
+allowed_origins = [origin.strip() for origin in allowed_origins_env.split(",") if origin.strip()]
 
-app.add_middleware(
-    CORSMiddleware,
+app.add_middleware(CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+    allow_methods=["*"],       
+    allow_headers=["*"], )
 
-# Variables de entorno requeridas para seguridad (validación interna, sin headers del cliente)
-import os
 API_TOKEN = os.getenv("API_TOKEN")
 if API_TOKEN:
     API_TOKEN = API_TOKEN.strip()
