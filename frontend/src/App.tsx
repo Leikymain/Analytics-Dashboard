@@ -123,8 +123,8 @@ export default function AnalyticsDashboard() {
     if (!hasDemoToken) return <DemoTokenModal onSubmit={handleTokenSubmit} />
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4 md:p-8">
-            <div className="w-full max-w-6xl mx-auto">
+        <div className="w-full min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4 md:p-8">
+            <div className="w-full max-w-6xl mx-auto flex flex-col">
                 {/* Header */}
                 <div className="text-center mb-10 md:mb-12">
                     <div className="flex items-center justify-center gap-3 mb-4">
