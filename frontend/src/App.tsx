@@ -120,13 +120,19 @@ export default function AnalyticsDashboard() {
     }
 
     // Modal para token si no existe
-    if (!hasDemoToken) return <DemoTokenModal onSubmit={handleTokenSubmit} />
+    if (!hasDemoToken) {
+        return (
+            <div className="w-full h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50">
+                <DemoTokenModal onSubmit={handleTokenSubmit} />
+            </div>
+        )
+    }
 
     return (
-        <div className="w-full min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4 md:p-8 py-8 md:py-12">
-            <div className="w-full max-w-6xl mx-auto flex flex-col justify-center">
+        <div className="w-full min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4 md:p-8">
+            <div className="w-full max-w-6xl mx-auto flex flex-col items-center justify-center py-8 md:py-12">
                 {/* Header */}
-                <div className="text-center mb-8 md:mb-10">
+                <div className="text-center mb-8 md:mb-10 w-full">
                     <div className="flex items-center justify-center gap-3 mb-4">
                         <div className="bg-gradient-to-br from-blue-600 to-purple-600 p-3 rounded-2xl shadow-lg">
                             <BarChart3 className="w-8 h-8 md:w-10 md:h-10 text-white" />
@@ -139,10 +145,10 @@ export default function AnalyticsDashboard() {
                 </div>
 
                 {/* Upload */}
-                <div className="bg-white rounded-3xl shadow-2xl p-6 md:p-8 mb-6 md:mb-8">
-                    <div className="border-2 border-dashed border-gray-300 rounded-2xl p-8 md:p-12 text-center hover:border-blue-400 hover:bg-blue-50/50 transition-all duration-300">
-                        <Upload className="w-14 h-14 md:w-16 md:h-16 text-gray-400 mx-auto mb-4" />
-                        <label htmlFor="file-upload" className="cursor-pointer text-blue-600 hover:text-blue-700 font-semibold text-base md:text-lg inline-block">
+                <div className="w-full bg-white rounded-3xl shadow-2xl p-6 md:p-8 mb-6 md:mb-8">
+                    <div className="border-2 border-dashed border-gray-300 rounded-2xl p-8 md:p-12 text-center hover:border-blue-400 hover:bg-blue-50/50 transition-all duration-300 cursor-pointer group">
+                        <Upload className="w-14 h-14 md:w-16 md:h-16 text-gray-400 mx-auto mb-4 group-hover:text-blue-500 transition-colors" />
+                        <label htmlFor="file-upload" className="cursor-pointer text-blue-600 hover:text-blue-700 font-semibold text-base md:text-lg inline-block transition-colors">
                             Haz clic para subir archivo CSV
                         </label>
                         <input type="file" accept=".csv" onChange={handleFileChange} className="hidden" id="file-upload" />
@@ -191,7 +197,7 @@ export default function AnalyticsDashboard() {
 
                 {/* Error */}
                 {error && (
-                    <div className="bg-red-50 border-l-4 border-red-500 p-5 mb-6 md:mb-8 rounded-r-xl shadow-md">
+                    <div className="w-full bg-red-50 border-l-4 border-red-500 p-5 mb-6 md:mb-8 rounded-r-xl shadow-md animate-in fade-in slide-in-from-top-2 duration-300">
                         <div className="flex items-start gap-3">
                             <AlertCircle className="w-6 h-6 text-red-500 flex-shrink-0 mt-0.5" />
                             <p className="text-red-700 font-medium">{error}</p>
@@ -201,7 +207,7 @@ export default function AnalyticsDashboard() {
 
                 {/* Analysis */}
                 {analysis && (
-                    <div className="space-y-6 bg-white p-6 md:p-8 rounded-3xl shadow-2xl">
+                    <div className="w-full space-y-6 bg-white p-6 md:p-8 rounded-3xl shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-500">
                         <div className="border-b border-gray-200 pb-4">
                             <h2 className="text-2xl font-bold text-gray-800">Resumen del Análisis</h2>
                         </div>
