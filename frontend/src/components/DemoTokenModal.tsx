@@ -18,9 +18,9 @@ const DemoTokenModal: React.FC<Props> = ({ onSubmit }) => {
   };
 
   return (
-    <div className="fixed inset-0 w-full h-full bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 md:p-10 transform transition-all">
-        <div className="flex flex-col items-center text-center mb-6">
+    <div className="fixed inset-0 w-full h-full bg-black/70 backdrop-blur-sm grid place-items-center z-50 p-4">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 md:p-10 grid gap-6">
+        <div className="flex flex-col items-center text-center">
           <div className="bg-gradient-to-br from-blue-500 to-purple-600 p-4 rounded-2xl mb-4 shadow-lg">
             <Lock className="w-8 h-8 text-white" />
           </div>
@@ -31,14 +31,21 @@ const DemoTokenModal: React.FC<Props> = ({ onSubmit }) => {
         </div>
 
         <div className="space-y-4">
-          <input
-            value={token}
-            onChange={(e) => { setToken(e.target.value); setError(""); }}
-            onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
-            placeholder="Pega tu token aquí"
-            className="w-full border-2 border-gray-200 p-4 rounded-xl text-gray-700 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
-            autoFocus
-          />
+          <div>
+            <input
+              value={token}
+              onChange={(e) => {
+                setToken(e.target.value);
+                setError("");
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSubmit();
+              }}
+              placeholder="Pega tu token aquí"
+              className="w-full border-2 border-gray-200 p-4 rounded-xl text-gray-700 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+              autoFocus
+            />
+          </div>
 
           {error && (
             <div className="flex items-center gap-2 text-red-600 bg-red-50 p-3 rounded-lg border border-red-200">

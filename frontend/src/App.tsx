@@ -81,15 +81,15 @@ export default function AnalyticsDashboard() {
 
     if (!hasDemoToken) {
         return (
-            <div className="w-full h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50">
+            <div className="w-full h-screen grid place-items-center bg-gradient-to-br from-blue-50 via-white to-purple-50">
                 <DemoTokenModal onSubmit={handleTokenSubmit} />
             </div>
         )
     }
 
     return (
-        <div className="w-full min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4 md:p-8">
-            <div className="w-full max-w-6xl flex flex-col items-center justify-center space-y-8">
+        <div className="w-full min-h-screen grid place-items-center bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4 md:p-8">
+            <div className="w-full max-w-6xl grid gap-8">
 
                 {/* Header */}
                 <div className="text-center w-full">

@@ -23,4 +23,8 @@ html, body, #root {
   padding: 0;
   overflow-x: hidden;
   background-color: #f0f4f8;
+
+  /* Añadido para usar Grid y centrar el contenido */
+  display: grid;
+  place-items: center;
 }
