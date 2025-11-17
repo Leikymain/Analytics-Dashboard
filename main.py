@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 import pandas as pd
 import io
 import json
+from auth_middleware import require_auth
 
 load_dotenv()
 
@@ -17,8 +18,8 @@ app = FastAPI(
     description="Sube CSV y obtén insights automáticos con IA - By Jorge Lago",
     version="1.0.0"
 )
-allowed_origins = [origin.strip() for origin in os.getenv("ALLOWED_ORIGINS", "").split(",") if origin.strip()]
 
+allowed_origins = [origin.strip() for origin in os.getenv("ALLOWED_ORIGINS", "").split(",") if origin.strip()]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
@@ -42,16 +43,6 @@ def check_rate_limit(client_ip: str):
                             detail="Demasiadas peticiones. Espera un minuto antes de volver a intentar.")
     filtered.append(now)
     request_timestamps[client_ip] = filtered
-
-# Demo Token validation
-def require_demo_token(authorization: Optional[str] = Header(None)):
-    if not authorization:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="No autorizado")
-    token = authorization.replace("Bearer ", "")
-    demo_tokens = [t.strip() for t in os.getenv("DEMO_TOKENS", "").split(",") if t.strip()]
-    if token not in demo_tokens:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token inválido")
-    return token
 
 # Pydantic models
 class VisualizationSuggestion(BaseModel):
@@ -167,10 +158,10 @@ def root(req: Request):
 
 @app.get("/config/token-status")
 def token_status():
-    return {"token_configured": bool(os.getenv("DEMO_TOKENS", ""))}
+    return {"token_configured": True}  # Siempre mostramos que el demo token se puede introducir
 
 @app.post("/preview/csv", response_model=DataSample)
-async def preview_csv(file: UploadFile = File(...), req: Request = None, token: str = Depends(require_demo_token)):
+async def preview_csv(file: UploadFile = File(...), req: Request = None, token: str = Depends(require_auth)):
     check_rate_limit(req.client.host)
     if not file.filename.endswith('.csv'):
         raise HTTPException(status_code=400, detail="Solo archivos CSV")
@@ -187,7 +178,7 @@ async def preview_csv(file: UploadFile = File(...), req: Request = None, token: 
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 @app.post("/analyze/csv", response_model=AnalysisResponse)
-async def analyze_csv(file: UploadFile = File(...), question: Optional[str] = None, req: Request = None, token: str = Depends(require_demo_token)):
+async def analyze_csv(file: UploadFile = File(...), question: Optional[str] = None, req: Request = None, token: str = Depends(require_auth)):
     check_rate_limit(req.client.host)
     if not file.filename.endswith('.csv'):
         raise HTTPException(status_code=400, detail="Solo archivos CSV")
