@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import type { ChangeEvent } from 'react'
 import { Upload, AlertCircle, BarChart3, CheckCircle, Loader } from 'lucide-react'
-import DemoTokenModal from './components/DemoTokenModal'
+import DemoTokenModal from './components/DemoTokenModal.tsx'
 import type { AnalysisResponse, DataSample } from './types'
 
 export default function AnalyticsDashboard() {
@@ -15,11 +15,9 @@ export default function AnalyticsDashboard() {
     const [hasDemoToken, setHasDemoToken] = useState<boolean>(false)
     const [demoToken, setDemoToken] = useState<string>('')
 
-    // Configurar URL base de API
     const rawBase = (import.meta.env.VITE_API_BASE_URL as string) || (import.meta.env.DEV ? 'http://localhost:8002' : '')
     const API_URL = (rawBase.startsWith('http') ? rawBase : `https://${rawBase}`).replace(/\/+$/, '')
 
-    // Cargar token de localStorage
     useEffect(() => {
         const stored = localStorage.getItem('demo_token')
         if (stored && stored.trim()) {
@@ -35,10 +33,8 @@ export default function AnalyticsDashboard() {
         setError(null)
     }
 
-    // Devuelve headers correctos para fetch
     const getAuthHeader = (): HeadersInit => demoToken ? { Authorization: `Bearer ${demoToken}` } : {}
 
-    // Manejo de cambio de archivo
     const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
         setAnalysis(null)
         setPreview(null)
@@ -58,7 +54,6 @@ export default function AnalyticsDashboard() {
 
         setFile(selectedFile)
 
-        // Preview CSV
         const formData = new FormData()
         formData.append('file', selectedFile)
         setLoadingPreview(true)
@@ -77,20 +72,14 @@ export default function AnalyticsDashboard() {
             const data: DataSample = await res.json()
             setPreview(data)
         } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : 'Error al cargar preview'
-            setError(msg)
+            setError(err instanceof Error ? err.message : 'Error al cargar preview')
         } finally {
             setLoadingPreview(false)
         }
     }
 
     const handleAnalyze = async () => {
-        if (!file) return
-        if (!hasDemoToken) {
-            setError('Debes introducir un token de acceso primero')
-            return
-        }
-
+        if (!file || !hasDemoToken) return
         setLoadingAnalysis(true)
         setError(null)
         setAnalysis(null)
@@ -112,14 +101,12 @@ export default function AnalyticsDashboard() {
             const data: AnalysisResponse = await res.json()
             setAnalysis(data)
         } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : 'Error en el análisis'
-            setError(msg)
+            setError(err instanceof Error ? err.message : 'Error en el análisis')
         } finally {
             setLoadingAnalysis(false)
         }
     }
 
-    // Modal para token si no existe
     if (!hasDemoToken) {
         return (
             <div className="w-full h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50">
@@ -130,9 +117,10 @@ export default function AnalyticsDashboard() {
 
     return (
         <div className="w-full min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4 md:p-8">
-            <div className="w-full max-w-6xl mx-auto flex flex-col items-center justify-center py-8 md:py-12">
+            <div className="w-full max-w-6xl mx-auto flex flex-col items-center justify-center py-8 md:py-12 space-y-8">
+
                 {/* Header */}
-                <div className="text-center mb-8 md:mb-10 w-full">
+                <div className="text-center w-full">
                     <div className="flex items-center justify-center gap-3 mb-4">
                         <div className="bg-gradient-to-br from-blue-600 to-purple-600 p-3 rounded-2xl shadow-lg">
                             <BarChart3 className="w-8 h-8 md:w-10 md:h-10 text-white" />
@@ -145,7 +133,7 @@ export default function AnalyticsDashboard() {
                 </div>
 
                 {/* Upload */}
-                <div className="w-full bg-white rounded-3xl shadow-2xl p-6 md:p-8 mb-6 md:mb-8">
+                <div className="w-full bg-white rounded-3xl shadow-2xl p-6 md:p-8 space-y-6">
                     <div className="border-2 border-dashed border-gray-300 rounded-2xl p-8 md:p-12 text-center hover:border-blue-400 hover:bg-blue-50/50 transition-all duration-300 cursor-pointer group">
                         <Upload className="w-14 h-14 md:w-16 md:h-16 text-gray-400 mx-auto mb-4 group-hover:text-blue-500 transition-colors" />
                         <label htmlFor="file-upload" className="cursor-pointer text-blue-600 hover:text-blue-700 font-semibold text-base md:text-lg inline-block transition-colors">
@@ -161,14 +149,14 @@ export default function AnalyticsDashboard() {
                     </div>
 
                     {loadingPreview && (
-                        <div className="mt-6 flex items-center justify-center text-blue-600">
+                        <div className="flex items-center justify-center text-blue-600">
                             <Loader className="w-5 h-5 animate-spin mr-2" />
                             <span className="font-medium">Cargando preview...</span>
                         </div>
                     )}
 
                     {preview && (
-                        <div className="mt-6 p-5 bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl border border-gray-200">
+                        <div className="p-5 bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl border border-gray-200">
                             <h3 className="font-bold text-gray-800 mb-3 text-lg">Vista Previa</h3>
                             <div className="space-y-2 text-gray-700">
                                 <p><strong className="text-gray-800">Filas:</strong> {preview.total_rows}</p>
@@ -181,23 +169,21 @@ export default function AnalyticsDashboard() {
                         <button
                             onClick={handleAnalyze}
                             disabled={loadingAnalysis}
-                            className="mt-6 w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:transform-none"
+                            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:transform-none"
                         >
                             {loadingAnalysis ? (
                                 <span className="flex items-center justify-center gap-2">
                                     <Loader className="w-5 h-5 animate-spin" />
                                     Analizando con IA...
                                 </span>
-                            ) : (
-                                'Analizar Datos'
-                            )}
+                            ) : 'Analizar Datos'}
                         </button>
                     )}
                 </div>
 
                 {/* Error */}
                 {error && (
-                    <div className="w-full bg-red-50 border-l-4 border-red-500 p-5 mb-6 md:mb-8 rounded-r-xl shadow-md animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="w-full bg-red-50 border-l-4 border-red-500 p-5 rounded-r-xl shadow-md animate-in fade-in duration-300">
                         <div className="flex items-start gap-3">
                             <AlertCircle className="w-6 h-6 text-red-500 flex-shrink-0 mt-0.5" />
                             <p className="text-red-700 font-medium">{error}</p>
@@ -207,7 +193,7 @@ export default function AnalyticsDashboard() {
 
                 {/* Analysis */}
                 {analysis && (
-                    <div className="w-full space-y-6 bg-white p-6 md:p-8 rounded-3xl shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="w-full space-y-6 bg-white p-6 md:p-8 rounded-3xl shadow-2xl animate-in fade-in duration-500">
                         <div className="border-b border-gray-200 pb-4">
                             <h2 className="text-2xl font-bold text-gray-800">Resumen del Análisis</h2>
                         </div>
@@ -248,7 +234,7 @@ export default function AnalyticsDashboard() {
                 )}
 
                 {/* Footer */}
-                <div className="mt-10 md:mt-12 text-center text-gray-500 text-sm space-y-1">
+                <div className="text-center text-gray-500 text-sm space-y-1">
                     <p className="font-medium">Desarrollado por Jorge Lago Campos</p>
                     <p>Powered by Claude AI</p>
                 </div>
