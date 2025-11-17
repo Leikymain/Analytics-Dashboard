@@ -7,7 +7,7 @@ import {
 import './App.css'
 
 import DemoTokenModal from "./components/DemoTokenModal"
-import { getDemoToken, askForDemoToken } from "./services/demoToken"
+import { getDemoToken } from "./services/demoToken"
 
 type AnalysisResponse = {
   summary: string
