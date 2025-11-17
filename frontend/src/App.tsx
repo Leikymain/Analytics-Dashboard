@@ -1,29 +1,30 @@
 import { useState, useEffect } from 'react'
 import type { ChangeEvent } from 'react'
-import { Upload, AlertCircle, BarChart3, CheckCircle } from 'lucide-react'
+import { Upload, AlertCircle, BarChart3, CheckCircle, Loader } from 'lucide-react'
 import DemoTokenModal from './components/DemoTokenModal'
 import type { AnalysisResponse, DataSample } from './types'
 
 export default function AnalyticsDashboard() {
     const [file, setFile] = useState<File | null>(null)
-    const [loading, setLoading] = useState(false)
+    const [loadingPreview, setLoadingPreview] = useState(false)
+    const [loadingAnalysis, setLoadingAnalysis] = useState(false)
     const [analysis, setAnalysis] = useState<AnalysisResponse | null>(null)
     const [preview, setPreview] = useState<DataSample | null>(null)
     const [error, setError] = useState<string | null>(null)
 
     const [hasDemoToken, setHasDemoToken] = useState<boolean>(false)
-    const [demoToken, setDemoToken] = useState<string>("")
+    const [demoToken, setDemoToken] = useState<string>('')
 
-    // Base URL normalizada
+    // Configurar URL base de API
     const rawBase = (import.meta.env.VITE_API_BASE_URL as string) || (import.meta.env.DEV ? 'http://localhost:8002' : '')
     const API_URL = (rawBase.startsWith('http') ? rawBase : `https://${rawBase}`).replace(/\/+$/, '')
 
-    // Al cargar, revisa si hay Demo Token en localStorage
+    // Cargar token de localStorage
     useEffect(() => {
         const stored = localStorage.getItem('demo_token')
-        if (stored && stored.trim().length > 0) {
-            setHasDemoToken(true)
+        if (stored && stored.trim()) {
             setDemoToken(stored)
+            setHasDemoToken(true)
         }
     }, [])
 
@@ -35,11 +36,14 @@ export default function AnalyticsDashboard() {
     }
 
     // Devuelve headers correctos para fetch
-    const getAuthHeader = (): HeadersInit => {
-        return demoToken ? { Authorization: `Bearer ${demoToken}` } : {}
-    }
+    const getAuthHeader = (): HeadersInit => demoToken ? { Authorization: `Bearer ${demoToken}` } : {}
 
+    // Manejo de cambio de archivo
     const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
+        setAnalysis(null)
+        setPreview(null)
+        setError(null)
+
         if (!hasDemoToken) {
             setError('Debes introducir un token de acceso primero')
             return
@@ -53,32 +57,30 @@ export default function AnalyticsDashboard() {
         }
 
         setFile(selectedFile)
-        setError(null)
-        setAnalysis(null)
 
+        // Preview CSV
         const formData = new FormData()
         formData.append('file', selectedFile)
+        setLoadingPreview(true)
 
         try {
-            const response = await fetch(`${API_URL}/preview/csv`, {
+            const res = await fetch(`${API_URL}/preview/csv`, {
                 method: 'POST',
                 body: formData,
                 headers: getAuthHeader()
             })
 
-            if (!response.ok) {
-                const msg =
-                    response.status === 401 ? 'No autorizado' :
-                    response.status === 429 ? 'Demasiadas peticiones, intenta más tarde' :
-                    'Error al cargar preview'
-                throw new Error(msg)
+            if (!res.ok) {
+                throw new Error(res.status === 401 ? 'No autorizado' : res.status === 429 ? 'Demasiadas peticiones, intenta más tarde' : 'Error al cargar preview')
             }
 
-            const data: DataSample = await response.json()
+            const data: DataSample = await res.json()
             setPreview(data)
-        } catch (err) {
+        } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : 'Error al cargar preview'
             setError(msg)
+        } finally {
+            setLoadingPreview(false)
         }
     }
 
@@ -89,41 +91,36 @@ export default function AnalyticsDashboard() {
             return
         }
 
-        setLoading(true)
+        setLoadingAnalysis(true)
         setError(null)
+        setAnalysis(null)
 
         const formData = new FormData()
         formData.append('file', file)
 
         try {
-            const response = await fetch(`${API_URL}/analyze/csv`, {
+            const res = await fetch(`${API_URL}/analyze/csv`, {
                 method: 'POST',
                 body: formData,
                 headers: getAuthHeader()
             })
 
-            if (!response.ok) {
-                const msg =
-                    response.status === 401 ? 'No autorizado' :
-                    response.status === 429 ? 'Demasiadas peticiones, intenta más tarde' :
-                    'Error en el análisis'
-                throw new Error(msg)
+            if (!res.ok) {
+                throw new Error(res.status === 401 ? 'No autorizado' : res.status === 429 ? 'Demasiadas peticiones, intenta más tarde' : 'Error en el análisis')
             }
 
-            const data: AnalysisResponse = await response.json()
+            const data: AnalysisResponse = await res.json()
             setAnalysis(data)
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : 'Error en el análisis'
             setError(msg)
         } finally {
-            setLoading(false)
+            setLoadingAnalysis(false)
         }
     }
 
-    // Mostrar modal Demo Token si no hay token
-    if (!hasDemoToken) {
-        return <DemoTokenModal onSubmit={handleTokenSubmit} />
-    }
+    // Modal para token si no existe
+    if (!hasDemoToken) return <DemoTokenModal onSubmit={handleTokenSubmit} />
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-8">
@@ -137,7 +134,7 @@ export default function AnalyticsDashboard() {
                     <p className="text-gray-600 text-lg">Sube tu CSV y obtén insights automáticos con Inteligencia Artificial</p>
                 </div>
 
-                {/* Upload Section */}
+                {/* Upload */}
                 <div className="bg-white rounded-2xl shadow-xl p-8 mb-8">
                     <div className="border-3 border-dashed border-gray-300 rounded-xl p-12 text-center hover:border-blue-400 transition-colors">
                         <Upload className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -153,23 +150,28 @@ export default function AnalyticsDashboard() {
                         )}
                     </div>
 
+                    {loadingPreview && (
+                        <div className="mt-4 flex items-center justify-center text-blue-600">
+                            <Loader className="w-5 h-5 animate-spin mr-2" />
+                            Cargando preview...
+                        </div>
+                    )}
+
                     {preview && (
                         <div className="mt-6 p-4 bg-gray-50 rounded-lg">
                             <h3 className="font-semibold text-gray-700 mb-2">Vista Previa</h3>
-                            <div className="text-sm text-gray-600 space-y-1">
-                                <p><strong>Filas:</strong> {preview.total_rows}</p>
-                                <p><strong>Columnas:</strong> {preview.columns.join(', ')}</p>
-                            </div>
+                            <p><strong>Filas:</strong> {preview.total_rows}</p>
+                            <p><strong>Columnas:</strong> {preview.columns.join(', ')}</p>
                         </div>
                     )}
 
                     {file && (
                         <button
                             onClick={handleAnalyze}
-                            disabled={loading}
+                            disabled={loadingAnalysis}
                             className="mt-6 w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                         >
-                            {loading ? 'Analizando con IA...' : 'Analizar Datos'}
+                            {loadingAnalysis ? 'Analizando con IA...' : 'Analizar Datos'}
                         </button>
                     )}
                 </div>
@@ -184,11 +186,21 @@ export default function AnalyticsDashboard() {
                     </div>
                 )}
 
-                {/* Analysis Results */}
+                {/* Analysis */}
                 {analysis && (
-                    <div className="space-y-6">
-                        {/* Aquí se pueden renderizar summary, key metrics, insights, visualizaciones */}
-                        {/* Mantener igual que tu código previo */}
+                    <div className="space-y-6 bg-white p-6 rounded-xl shadow-lg">
+                        <h2 className="text-xl font-bold text-gray-800 mb-4">Resumen</h2>
+                        <p className="text-gray-700">{analysis.summary}</p>
+
+                        <h3 className="mt-4 font-semibold text-gray-800">Insights</h3>
+                        <ul className="list-disc list-inside text-gray-700">
+                            {analysis.insights.map((i, idx) => <li key={idx}>{i}</li>)}
+                        </ul>
+
+                        <h3 className="mt-4 font-semibold text-gray-800">Recomendaciones</h3>
+                        <ul className="list-disc list-inside text-gray-700">
+                            {analysis.recommendations.map((r, idx) => <li key={idx}>{r}</li>)}
+                        </ul>
                     </div>
                 )}
 
