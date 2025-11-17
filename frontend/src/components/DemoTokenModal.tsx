@@ -14,7 +14,6 @@ const DemoTokenModal: React.FC<Props> = ({ onSubmit }) => {
       setError("Debes introducir un token válido");
       return;
     }
-
     onSubmit(token.trim());
   };
 
@@ -25,30 +24,21 @@ const DemoTokenModal: React.FC<Props> = ({ onSubmit }) => {
           <div className="bg-gradient-to-br from-blue-500 to-purple-600 p-4 rounded-2xl mb-4 shadow-lg">
             <Lock className="w-8 h-8 text-white" />
           </div>
-          <h2 className="text-2xl font-bold mb-2 text-gray-800">
-            Acceso a la Demo
-          </h2>
+          <h2 className="text-2xl font-bold mb-2 text-gray-800">Acceso a la Demo</h2>
           <p className="text-gray-600 text-sm">
             Introduce tu token de acceso para usar esta demo.
           </p>
         </div>
 
         <div className="space-y-4">
-          <div>
-            <input
-              value={token}
-              onChange={(e) => {
-                setToken(e.target.value);
-                setError("");
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleSubmit();
-              }}
-              placeholder="Pega tu token aquí"
-              className="w-full border-2 border-gray-200 p-4 rounded-xl text-gray-700 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
-              autoFocus
-            />
-          </div>
+          <input
+            value={token}
+            onChange={(e) => { setToken(e.target.value); setError(""); }}
+            onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
+            placeholder="Pega tu token aquí"
+            className="w-full border-2 border-gray-200 p-4 rounded-xl text-gray-700 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+            autoFocus
+          />
 
           {error && (
             <div className="flex items-center gap-2 text-red-600 bg-red-50 p-3 rounded-lg border border-red-200">

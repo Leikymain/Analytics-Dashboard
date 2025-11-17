@@ -39,43 +39,25 @@ export default function AnalyticsDashboard() {
         setAnalysis(null)
         setPreview(null)
         setError(null)
-
-        if (!hasDemoToken) {
-            setError('Debes introducir un token de acceso primero')
-            return
-        }
+        if (!hasDemoToken) { setError('Debes introducir un token de acceso primero'); return }
 
         const selectedFile = e.target.files?.[0]
         if (!selectedFile) return
-        if (!selectedFile.name.endsWith('.csv')) {
-            setError('Solo se aceptan archivos CSV')
-            return
-        }
+        if (!selectedFile.name.endsWith('.csv')) { setError('Solo se aceptan archivos CSV'); return }
 
         setFile(selectedFile)
-
         const formData = new FormData()
         formData.append('file', selectedFile)
         setLoadingPreview(true)
 
         try {
-            const res = await fetch(`${API_URL}/preview/csv`, {
-                method: 'POST',
-                body: formData,
-                headers: getAuthHeader()
-            })
-
-            if (!res.ok) {
-                throw new Error(res.status === 401 ? 'No autorizado' : res.status === 429 ? 'Demasiadas peticiones, intenta más tarde' : 'Error al cargar preview')
-            }
-
+            const res = await fetch(`${API_URL}/preview/csv`, { method: 'POST', body: formData, headers: getAuthHeader() })
+            if (!res.ok) throw new Error(res.status === 401 ? 'No autorizado' : res.status === 429 ? 'Demasiadas peticiones, intenta más tarde' : 'Error al cargar preview')
             const data: DataSample = await res.json()
             setPreview(data)
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : 'Error al cargar preview')
-        } finally {
-            setLoadingPreview(false)
-        }
+        } finally { setLoadingPreview(false) }
     }
 
     const handleAnalyze = async () => {
@@ -88,23 +70,13 @@ export default function AnalyticsDashboard() {
         formData.append('file', file)
 
         try {
-            const res = await fetch(`${API_URL}/analyze/csv`, {
-                method: 'POST',
-                body: formData,
-                headers: getAuthHeader()
-            })
-
-            if (!res.ok) {
-                throw new Error(res.status === 401 ? 'No autorizado' : res.status === 429 ? 'Demasiadas peticiones, intenta más tarde' : 'Error en el análisis')
-            }
-
+            const res = await fetch(`${API_URL}/analyze/csv`, { method: 'POST', body: formData, headers: getAuthHeader() })
+            if (!res.ok) throw new Error(res.status === 401 ? 'No autorizado' : res.status === 429 ? 'Demasiadas peticiones, intenta más tarde' : 'Error en el análisis')
             const data: AnalysisResponse = await res.json()
             setAnalysis(data)
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : 'Error en el análisis')
-        } finally {
-            setLoadingAnalysis(false)
-        }
+        } finally { setLoadingAnalysis(false) }
     }
 
     if (!hasDemoToken) {
@@ -116,8 +88,8 @@ export default function AnalyticsDashboard() {
     }
 
     return (
-        <div className="w-full min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4 md:p-8">
-            <div className="w-full max-w-6xl mx-auto flex flex-col items-center justify-center py-8 md:py-12 space-y-8">
+        <div className="w-full min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4 md:p-8">
+            <div className="w-full max-w-6xl flex flex-col items-center justify-center space-y-8">
 
                 {/* Header */}
                 <div className="text-center w-full">
@@ -132,8 +104,8 @@ export default function AnalyticsDashboard() {
                     </p>
                 </div>
 
-                {/* Upload */}
-                <div className="w-full bg-white rounded-3xl shadow-2xl p-6 md:p-8 space-y-6">
+                {/* Upload / Preview */}
+                <div className="w-full max-w-3xl bg-white rounded-3xl shadow-2xl p-6 md:p-8 space-y-6">
                     <div className="border-2 border-dashed border-gray-300 rounded-2xl p-8 md:p-12 text-center hover:border-blue-400 hover:bg-blue-50/50 transition-all duration-300 cursor-pointer group">
                         <Upload className="w-14 h-14 md:w-16 md:h-16 text-gray-400 mx-auto mb-4 group-hover:text-blue-500 transition-colors" />
                         <label htmlFor="file-upload" className="cursor-pointer text-blue-600 hover:text-blue-700 font-semibold text-base md:text-lg inline-block transition-colors">
@@ -183,7 +155,7 @@ export default function AnalyticsDashboard() {
 
                 {/* Error */}
                 {error && (
-                    <div className="w-full bg-red-50 border-l-4 border-red-500 p-5 rounded-r-xl shadow-md animate-in fade-in duration-300">
+                    <div className="w-full max-w-3xl bg-red-50 border-l-4 border-red-500 p-5 rounded-r-xl shadow-md animate-in fade-in duration-300">
                         <div className="flex items-start gap-3">
                             <AlertCircle className="w-6 h-6 text-red-500 flex-shrink-0 mt-0.5" />
                             <p className="text-red-700 font-medium">{error}</p>
@@ -193,7 +165,7 @@ export default function AnalyticsDashboard() {
 
                 {/* Analysis */}
                 {analysis && (
-                    <div className="w-full space-y-6 bg-white p-6 md:p-8 rounded-3xl shadow-2xl animate-in fade-in duration-500">
+                    <div className="w-full max-w-3xl space-y-6 bg-white p-6 md:p-8 rounded-3xl shadow-2xl animate-in fade-in duration-500">
                         <div className="border-b border-gray-200 pb-4">
                             <h2 className="text-2xl font-bold text-gray-800">Resumen del Análisis</h2>
                         </div>
