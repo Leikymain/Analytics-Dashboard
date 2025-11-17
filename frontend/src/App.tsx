@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import type { ChangeEvent } from 'react'
-import { Upload, FileText, TrendingUp, AlertCircle, BarChart3, CheckCircle } from 'lucide-react'
+import { Upload, AlertCircle, BarChart3, CheckCircle } from 'lucide-react'
 import DemoTokenModal from './components/DemoTokenModal'
 import type { AnalysisResponse, DataSample } from './types'
 
