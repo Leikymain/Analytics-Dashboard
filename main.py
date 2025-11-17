@@ -19,18 +19,20 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# Opcional: configurar CORS según tu frontend
 allowed_origins = [origin.strip() for origin in os.getenv("ALLOWED_ORIGINS", "").split(",") if origin.strip()]
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=allowed_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+if allowed_origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=allowed_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 # Rate limiting por IP en memoria
-RATE_LIMIT = int(os.getenv("RATE_LIMIT", 30))  # solicitudes por minuto
-RATE_WINDOW = 60  # segundos
+RATE_LIMIT = int(os.getenv("RATE_LIMIT", 30))
+RATE_WINDOW = 60
 request_timestamps: dict[str, list[float]] = {}
 
 def check_rate_limit(client_ip: str):
@@ -39,12 +41,14 @@ def check_rate_limit(client_ip: str):
     timestamps = request_timestamps.get(client_ip, [])
     filtered = [t for t in timestamps if now - t < RATE_WINDOW]
     if len(filtered) >= RATE_LIMIT:
-        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                            detail="Demasiadas peticiones. Espera un minuto antes de volver a intentar.")
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Demasiadas peticiones. Espera un minuto antes de volver a intentar."
+        )
     filtered.append(now)
     request_timestamps[client_ip] = filtered
 
-# Pydantic models
+# Modelos Pydantic
 class VisualizationSuggestion(BaseModel):
     type: str
     columns: List[str]
@@ -155,10 +159,6 @@ Devuelve SOLO el JSON sin markdown ni explicaciones adicionales."""
 def root(req: Request):
     check_rate_limit(req.client.host)
     return {"message": "Demo AI Analytics Dashboard API activo", "version": "1.0.0"}
-
-@app.get("/config/token-status")
-def token_status():
-    return {"token_configured": True}  # Siempre mostramos que el demo token se puede introducir
 
 @app.post("/preview/csv", response_model=DataSample)
 async def preview_csv(file: UploadFile = File(...), req: Request = None, token: str = Depends(require_auth)):
