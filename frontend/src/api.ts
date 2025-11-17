@@ -1,28 +1,35 @@
 import axios from "axios";
-import { getDemoToken } from "./services/demoToken.ts";
+import type { AnalysisResponse, DataSample } from "./types";
+const rawBase = (import.meta.env.VITE_API_BASE_URL as string) || "http://localhost:8002";
+const API_BASE_URL = (rawBase.startsWith("http") ? rawBase : `https://${rawBase}`).replace(/\/+$/, "");
 
-const rawBase =
-  (import.meta.env.VITE_API_BASE_URL as string) ||
-  "http://localhost:8002";
+const DEMO_TOKEN = localStorage.getItem("demo_token") || "";
+const ENV_API_TOKEN = (import.meta.env.VITE_API_TOKEN as string) || "";
 
-const API_BASE_URL = (rawBase.startsWith("http") ? rawBase : `https://${rawBase}`)
-  .replace(/\/+$/, "");
-
-export const apiClient = axios.create({
+const apiClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: 15000,
-});
-
-// Interceptor: añadir token si existe
-apiClient.interceptors.request.use((config) => {
-  const token = getDemoToken();
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  headers: {
+    ...(DEMO_TOKEN ? { Authorization: `Bearer ${DEMO_TOKEN}` } : {}),
+    ...(!DEMO_TOKEN && ENV_API_TOKEN ? { Authorization: `Bearer ${ENV_API_TOKEN}` } : {})
   }
-  return config;
 });
 
 export async function getHealth() {
   const { data } = await apiClient.get("/health");
   return data as { status: string; timestamp: string };
+}
+
+export async function previewCSV(file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+  const { data } = await apiClient.post("/preview/csv", formData);
+  return data as DataSample;
+}
+
+export async function analyzeCSV(file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+  const { data } = await apiClient.post("/analyze/csv", formData);
+  return data as AnalysisResponse;
 }
