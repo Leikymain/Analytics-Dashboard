@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Request, status, Header
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 import pandas as pd
 import io
 import json
+import re
 from auth_middleware import require_auth
 
 load_dotenv()
@@ -19,7 +20,7 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Opcional: configurar CORS según tu frontend
+# Configurar CORS
 allowed_origins = [origin.strip() for origin in os.getenv("ALLOWED_ORIGINS", "").split(",") if origin.strip()]
 if allowed_origins:
     app.add_middleware(
@@ -30,7 +31,7 @@ if allowed_origins:
         allow_headers=["*"],
     )
 
-# Rate limiting por IP en memoria
+# Rate limiting
 RATE_LIMIT = int(os.getenv("RATE_LIMIT", 30))
 RATE_WINDOW = 60
 request_timestamps: dict[str, list[float]] = {}
@@ -70,6 +71,7 @@ class DataSample(BaseModel):
     total_rows: int
     data_types: Dict[str, str]
 
+# Analizar DataFrame
 def analyze_dataframe(df: pd.DataFrame) -> Dict[str, Any]:
     analysis = {
         "shape": {"rows": len(df), "columns": len(df.columns)},
@@ -90,28 +92,19 @@ def analyze_dataframe(df: pd.DataFrame) -> Dict[str, Any]:
         }
     return analysis
 
-import re
-
+# Obtener insights de IA
 def get_ai_insights(df_analysis: Dict[str, Any], user_question: Optional[str] = None) -> tuple[Dict[str, Any], int]:
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
         raise HTTPException(status_code=500, detail="API key no configurada")
-    
+
     client = anthropic.Anthropic(api_key=api_key)
-    context = f"""
-    Análisis de datos:
-    - Total de filas: {df_analysis['shape']['rows']}
-    - Total de columnas: {df_analysis['shape']['columns']}
-    - Columnas: {', '.join(df_analysis['columns'])}
-    - Valores faltantes: {df_analysis['missing_values']}
 
-    Resumen estadístico de columnas numéricas:
-    {json.dumps(df_analysis['numeric_summary'], indent=2)}
+    # Convertir análisis a JSON limpio
+    clean_context = json.dumps(df_analysis, ensure_ascii=False, separators=(",", ":"))
 
-    Muestra de datos (primeras 10 filas):
-    {json.dumps(df_analysis['sample_data'][:5], indent=2)}
-    """
-    prompt = f"""Eres un analista de datos experto. Analiza estos datos y devuelve SOLO un JSON válido con esta estructura:
+    prompt = f"""
+Eres un analista de datos experto. Analiza estos datos y devuelve SOLO un JSON válido con esta estructura:
 {{
   "summary": "Resumen ejecutivo en 2-3 frases",
   "insights": ["Insight 1", "Insight 2"],
@@ -120,6 +113,8 @@ def get_ai_insights(df_analysis: Dict[str, Any], user_question: Optional[str] = 
   "data_quality": {{}},
   "visualizations_suggested": []
 }}
+Datos a analizar:
+{clean_context}
 {f"Pregunta específica del usuario: {user_question}" if user_question else ""}
 """
 
@@ -131,18 +126,15 @@ def get_ai_insights(df_analysis: Dict[str, Any], user_question: Optional[str] = 
             messages=[{"role": "user", "content": prompt}]
         )
 
-        # Obtener texto de la respuesta
         response_text = response.content[0].text.strip()
-        print("DEBUG: Claude response text:", response_text[:1000])  # muestra los primeros 1000 caracteres
+        print("DEBUG: Claude response text:", response_text[:1000])  # log parcial
 
-        # Extraer el JSON usando regex
+        # Extraer JSON con regex
         match = re.search(r"\{.*\}", response_text, re.DOTALL)
         if not match:
             raise HTTPException(status_code=500, detail="No se pudo extraer JSON de la respuesta de IA")
 
-        json_text = match.group(0)
-        insights_data = json.loads(json_text)
-
+        insights_data = json.loads(match.group(0))
         tokens_used = response.usage.input_tokens + response.usage.output_tokens
         return insights_data, tokens_used
 
@@ -209,15 +201,9 @@ async def analyze_csv(
 
         df_analysis = analyze_dataframe(df)
 
-        # Llamada robusta a Claude con manejo de errores y logs
-        try:
-            ai_insights, tokens_used = get_ai_insights(df_analysis, question)
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            raise HTTPException(status_code=500, detail=f"Error al obtener insights de IA: {e}")
+        # Llamada robusta a Claude
+        ai_insights, tokens_used = get_ai_insights(df_analysis, question)
 
-        # Validar que la respuesta tenga la estructura esperada
         if not isinstance(ai_insights, dict):
             raise HTTPException(status_code=500, detail="La respuesta de IA no es un JSON válido")
 
@@ -238,7 +224,6 @@ async def analyze_csv(
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error procesando CSV: {str(e)}")
-
 
 @app.get("/health")
 def health_check():
