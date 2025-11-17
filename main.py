@@ -1,4 +1,5 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Request, status, Header
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import anthropic
@@ -15,6 +16,15 @@ app = FastAPI(
     title="AI Analytics Dashboard API (Demo)",
     description="Sube CSV y obtén insights automáticos con IA - By Jorge Lago",
     version="1.0.0"
+)
+allowed_origins = [origin.strip() for origin in os.getenv("ALLOWED_ORIGINS", "").split(",") if origin.strip()]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Rate limiting por IP en memoria
