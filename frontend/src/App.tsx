@@ -282,6 +282,7 @@ export default function AnalyticsDashboard() {
                                     </span>
                                 )}
                             </button>
+                            <br />
                         </div>
                     )}
                 </div>
@@ -325,6 +326,7 @@ export default function AnalyticsDashboard() {
                             <p className="leading-relaxed text-base md:text-lg font-medium" style={{ color: '#1a1a1a' }}>
                                 {analysis.summary}
                             </p>
+                            <br />
                         </div>
 
                         <div className="grid md:grid-cols-2 gap-6">
@@ -367,13 +369,6 @@ export default function AnalyticsDashboard() {
                     </div>
                 )}
             </main>
-
-            {/* Footer Minimalista */}
-            <footer className="w-full max-w-[1400px] mt-16 text-center px-4 md:px-8">
-                <p className="text-sm font-medium" style={{ color: '#555' }}>
-                    Desarrollado por Jorge Lago
-                </p>
-            </footer>
         </div>
     )
 }
