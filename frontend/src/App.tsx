@@ -365,6 +365,7 @@ export default function AnalyticsDashboard() {
                                     ))}
                                 </ul>
                             </div>
+                            <br />
                         </div>
                     </div>
                 )}
