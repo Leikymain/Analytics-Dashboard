@@ -94,46 +94,49 @@ export default function AnalyticsDashboard() {
     }
 
     return (
-        <div className="min-h-screen bg-white flex flex-col items-center justify-center py-8 px-4 md:px-6" style={{ color: '#1a1a1a' }}>
-            {/* Header Centrado */}
-            <header className="w-full max-w-[800px] mb-12 text-center">
-                <div className="flex items-center justify-center gap-4 mb-4">
+        <div className="min-h-screen bg-white flex flex-col items-center py-8 md:py-12 px-4 md:px-8" style={{ color: '#1a1a1a' }}>
+            {/* Header Centrado - Más Ancho */}
+            <header className="w-full max-w-[1400px] mb-16 text-center px-4 md:px-8">
+                <div className="flex items-center justify-center gap-4 mb-6">
                     <BarChart3 className="w-10 h-10 md:w-12 md:h-12" style={{ color: '#667eea' }} />
                     <h1 
                         className="font-bold tracking-tight"
                         style={{ 
-                            fontSize: 'clamp(32px, 5vw, 36px)',
+                            fontSize: 'clamp(32px, 4vw, 36px)',
                             color: '#1a1a1a'
                         }}
                     >
                         Analytics Dashboard AI
                     </h1>
                 </div>
+                <div className="w-full max-w-[200px] mx-auto h-px" style={{ backgroundColor: '#e0e0e0' }}></div>
             </header>
 
-            {/* Main Content - Centrado */}
-            <main className="w-full max-w-[800px] flex flex-col items-center space-y-8">
-                {/* Sección de Carga */}
+            {/* Main Content - Más Ancho */}
+            <main className="w-full max-w-[1400px] flex flex-col items-center space-y-8 px-4 md:px-8">
+                {/* Sección de Carga - Más Ancha */}
                 <div 
                     className="w-full bg-white rounded-2xl p-8 md:p-10 transition-all duration-250 ease-out"
                     style={{ boxShadow: '0 6px 20px rgba(0,0,0,0.08)' }}
                 >
-                    <div className="text-center space-y-3 mb-8">
-                        <h2 className="text-2xl font-bold" style={{ color: '#1a1a1a' }}>
+                    <div className="text-center space-y-3 mb-10">
+                        <h2 className="text-2xl md:text-3xl font-bold" style={{ color: '#1a1a1a' }}>
                             Carga tu archivo CSV
                         </h2>
-                        <p className="text-base" style={{ color: '#555' }}>
-                            Sube tus datos y genera análisis automáticos con IA
+                        <p className="text-base md:text-lg" style={{ color: '#555' }}>
+                            Sube tus datos y obtén insights automáticos
                         </p>
                     </div>
 
-                    {/* Área de Drag & Drop */}
+                    {/* Área de Drag & Drop - Más Grande */}
                     <div 
-                        className="border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all duration-250 ease-out group"
+                        className="border-2 border-dashed rounded-2xl text-center cursor-pointer transition-all duration-250 ease-out group flex flex-col items-center justify-center"
                         style={{
                             borderRadius: '16px',
                             backgroundColor: '#f8f9fa',
-                            borderColor: '#e0e0e0'
+                            borderColor: '#e0e0e0',
+                            minHeight: '180px',
+                            padding: '48px 32px'
                         }}
                         onDragOver={(e) => {
                             e.preventDefault()
@@ -151,10 +154,10 @@ export default function AnalyticsDashboard() {
                             handleDrop(e.dataTransfer.files)
                         }}
                     >
-                        <Upload className="w-16 h-16 md:w-20 md:h-20 mx-auto mb-4 transition-all duration-250 ease-out" style={{ color: '#999' }} />
+                        <Upload className="w-20 h-20 md:w-24 md:h-24 mx-auto mb-6 transition-all duration-250 ease-out" style={{ color: '#999' }} />
                         <label htmlFor="file-upload" className="cursor-pointer block">
-                            <p className="text-lg font-semibold mb-2 transition-all duration-250 ease-out" style={{ color: '#1a1a1a' }}>
-                                Haz clic o arrastra tu archivo CSV
+                            <p className="text-lg md:text-xl font-semibold transition-all duration-250 ease-out" style={{ color: '#1a1a1a' }}>
+                                Haz clic o arrastra tu archivo CSV aquí
                             </p>
                         </label>
                         <input 
@@ -166,18 +169,21 @@ export default function AnalyticsDashboard() {
                         />
                     </div>
 
+                    {/* Espaciador antes de vista previa */}
+                    {(file || preview) && <div style={{ height: '24px' }} />}
+
                     {/* Archivo Cargado */}
                     {file && (
                         <div 
-                            className="mt-6 p-4 rounded-xl transition-all duration-250 ease-out"
+                            className="w-full p-5 rounded-xl transition-all duration-250 ease-out"
                             style={{ 
                                 backgroundColor: '#f0f9ff',
-                                boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+                                boxShadow: '0 6px 20px rgba(0,0,0,0.08)'
                             }}
                         >
                             <div className="flex items-center justify-center gap-3">
                                 <CheckCircle className="w-5 h-5" style={{ color: '#10b981' }} />
-                                <span className="font-semibold text-base" style={{ color: '#1a1a1a' }}>
+                                <span className="font-semibold text-base md:text-lg" style={{ color: '#1a1a1a' }}>
                                     {file.name}
                                 </span>
                             </div>
@@ -186,7 +192,7 @@ export default function AnalyticsDashboard() {
 
                     {/* Loading Preview */}
                     {loadingPreview && (
-                        <div className="flex items-center justify-center gap-3 py-6 mt-6">
+                        <div className="flex items-center justify-center gap-3 py-6">
                             <Loader className="w-6 h-6 animate-spin" style={{ color: '#667eea' }} />
                             <span className="font-medium text-base" style={{ color: '#555' }}>
                                 Cargando preview...
@@ -196,76 +202,87 @@ export default function AnalyticsDashboard() {
 
                     {/* Vista Previa */}
                     {preview && (
-                        <div 
-                            className="mt-6 p-6 rounded-xl transition-all duration-250 ease-out"
-                            style={{ 
-                                backgroundColor: '#f8f9fa',
-                                boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
-                            }}
-                        >
-                            <div className="flex items-center gap-2 mb-4">
-                                <FileText className="w-5 h-5" style={{ color: '#667eea' }} />
-                                <h3 className="font-bold text-lg" style={{ color: '#1a1a1a' }}>Vista Previa</h3>
-                            </div>
-                            <div className="space-y-3">
-                                <div className="flex items-center justify-between py-2 border-b" style={{ borderColor: '#e0e0e0' }}>
-                                    <span className="font-semibold" style={{ color: '#1a1a1a' }}>Filas:</span>
-                                    <span className="font-medium" style={{ color: '#555' }}>{preview.total_rows}</span>
+                        <>
+                            <div style={{ height: '24px' }} />
+                            <div 
+                                className="w-full p-6 rounded-xl transition-all duration-250 ease-out"
+                                style={{ 
+                                    backgroundColor: '#f8f9fa',
+                                    boxShadow: '0 6px 20px rgba(0,0,0,0.08)'
+                                }}
+                            >
+                                <div className="flex items-center gap-2 mb-4">
+                                    <FileText className="w-5 h-5" style={{ color: '#667eea' }} />
+                                    <h3 className="font-bold text-lg" style={{ color: '#1a1a1a' }}>Vista Previa</h3>
                                 </div>
-                                <div className="flex items-start justify-between py-2">
-                                    <span className="font-semibold" style={{ color: '#1a1a1a' }}>Columnas:</span>
-                                    <span className="font-medium text-right max-w-xs" style={{ color: '#555' }}>
-                                        {preview.columns.join(', ')}
-                                    </span>
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between py-2 border-b" style={{ borderColor: '#e0e0e0' }}>
+                                        <span className="font-semibold" style={{ color: '#1a1a1a' }}>Filas:</span>
+                                        <span className="font-medium" style={{ color: '#555' }}>{preview.total_rows}</span>
+                                    </div>
+                                    <div className="flex items-start justify-between py-2">
+                                        <span className="font-semibold" style={{ color: '#1a1a1a' }}>Columnas:</span>
+                                        <span className="font-medium text-right max-w-xs" style={{ color: '#555' }}>
+                                            {preview.columns.join(', ')}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                            <div style={{ height: '24px' }} />
+                        </>
                     )}
 
-                    {/* Botón Analizar */}
+                    {/* Espaciador entre vista previa y botón */}
+                    {file && <div style={{ height: '28px' }} />}
+
+                    {/* Botón Analizar - Más Ancho */}
                     {file && (
-                        <button
-                            onClick={handleAnalyze}
-                            disabled={loadingAnalysis}
-                            className="w-full mt-8 text-white font-bold text-base transition-all duration-250 ease-out focus:outline-none focus:ring-4 focus:ring-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
-                            style={{
-                                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                                height: '48px',
-                                borderRadius: '12px'
-                            }}
-                            onMouseEnter={(e) => {
-                                if (!loadingAnalysis) {
-                                    e.currentTarget.style.filter = 'brightness(1.1)'
-                                    e.currentTarget.style.transform = 'translateY(-1px)'
-                                }
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.filter = 'brightness(1)'
-                                e.currentTarget.style.transform = 'translateY(0)'
-                            }}
-                            onMouseDown={(e) => {
-                                if (!loadingAnalysis) {
-                                    e.currentTarget.style.transform = 'scale(0.98)'
-                                }
-                            }}
-                            onMouseUp={(e) => {
-                                if (!loadingAnalysis) {
-                                    e.currentTarget.style.transform = 'translateY(-1px)'
-                                }
-                            }}
-                        >
-                            {loadingAnalysis ? (
-                                <span className="flex items-center justify-center gap-3">
-                                    <Loader className="w-6 h-6 animate-spin" />
-                                    <span>Analizando con IA...</span>
-                                </span>
-                            ) : (
-                                <span className="flex items-center justify-center gap-2">
-                                    <Sparkles className="w-5 h-5" />
-                                    Analizar Datos
-                                </span>
-                            )}
-                        </button>
+                        <div className="w-full flex justify-center">
+                            <button
+                                onClick={handleAnalyze}
+                                disabled={loadingAnalysis}
+                                className="text-white font-bold text-base transition-all duration-250 ease-out focus:outline-none focus:ring-4 focus:ring-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                                style={{
+                                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                    height: '48px',
+                                    borderRadius: '12px',
+                                    width: '80%',
+                                    maxWidth: '700px'
+                                }}
+                                onMouseEnter={(e) => {
+                                    if (!loadingAnalysis) {
+                                        e.currentTarget.style.filter = 'brightness(1.1)'
+                                        e.currentTarget.style.transform = 'translateY(-1px)'
+                                    }
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.filter = 'brightness(1)'
+                                    e.currentTarget.style.transform = 'translateY(0)'
+                                }}
+                                onMouseDown={(e) => {
+                                    if (!loadingAnalysis) {
+                                        e.currentTarget.style.transform = 'scale(0.98)'
+                                    }
+                                }}
+                                onMouseUp={(e) => {
+                                    if (!loadingAnalysis) {
+                                        e.currentTarget.style.transform = 'translateY(-1px)'
+                                    }
+                                }}
+                            >
+                                {loadingAnalysis ? (
+                                    <span className="flex items-center justify-center gap-3">
+                                        <Loader className="w-6 h-6 animate-spin" />
+                                        <span>Analizando con IA...</span>
+                                    </span>
+                                ) : (
+                                    <span className="flex items-center justify-center gap-2">
+                                        <Sparkles className="w-5 h-5" />
+                                        Analizar Datos
+                                    </span>
+                                )}
+                            </button>
+                        </div>
                     )}
                 </div>
 
@@ -352,7 +369,7 @@ export default function AnalyticsDashboard() {
             </main>
 
             {/* Footer Minimalista */}
-            <footer className="w-full max-w-[800px] mt-12 text-center">
+            <footer className="w-full max-w-[1400px] mt-16 text-center px-4 md:px-8">
                 <p className="text-sm font-medium" style={{ color: '#555' }}>
                     Desarrollado por Jorge Lago
                 </p>
