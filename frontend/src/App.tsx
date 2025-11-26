@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import type { ChangeEvent } from 'react'
 import { Upload, AlertCircle, CheckCircle, Loader, FileText, Sparkles, BarChart3 } from 'lucide-react'
 import DemoTokenModal from './components/DemoTokenModal.tsx'
@@ -12,16 +12,18 @@ export default function AnalyticsDashboard() {
     const [preview, setPreview] = useState<DataSample | null>(null)
     const [error, setError] = useState<string | null>(null)
 
-    const [hasDemoToken, setHasDemoToken] = useState<boolean>(false)
-    const [demoToken, setDemoToken] = useState<string>('')
+    // Initialize token state from localStorage to prevent modal flash
+    const [hasDemoToken, setHasDemoToken] = useState<boolean>(() => {
+        const stored = localStorage.getItem('demo_token')
+        return !!(stored && stored.trim())
+    })
+    const [demoToken, setDemoToken] = useState<string>(() => {
+        const stored = localStorage.getItem('demo_token')
+        return stored && stored.trim() ? stored : ''
+    })
 
     const rawBase = (import.meta.env.VITE_API_BASE_URL as string) || (import.meta.env.DEV ? 'http://localhost:8002' : '')
     const API_URL = (rawBase.startsWith('http') ? rawBase : `https://${rawBase}`).replace(/\/+$/, '')
-
-    useEffect(() => {
-        const stored = localStorage.getItem('demo_token')
-        if (stored && stored.trim()) { setDemoToken(stored); setHasDemoToken(true) }
-    }, [])
 
     const handleTokenSubmit = (token: string) => {
         localStorage.setItem('demo_token', token)
