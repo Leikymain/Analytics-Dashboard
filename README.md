@@ -1,5 +1,10 @@
 # Analytics Dashboard AI (FastAPI + React)
 
+## Stack
+
+- Backend: FastAPI
+- Frontend: React (Vite)
+
 ## Objetivo
 
 - Centralizar la previsualización y análisis de archivos CSV mediante una interfaz simple.
